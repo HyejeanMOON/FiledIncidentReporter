@@ -26,7 +26,15 @@
     <string name="edit">Edit</string>
     <string name="delete_incident">Delete incident</string>
     <string name="delete_confirmation_title">Delete this incident?</string>
-    <string name="delete_confirmation_message">This removes the incident from the current prototype session.</string>
+    <string name="delete_confirmation_message">This permanently removes the incident from the local server.</string>
+    <string name="refresh">Refresh</string>
+    <string name="loading_incidents">Loading reports…</string>
+    <string name="error_title">Could not complete the request</string>
+    <string name="error_network">Cannot reach the local server. Check that json-server is running and the API address is correct.</string>
+    <string name="error_server">The server could not complete the request. Please try again.</string>
+    <string name="error_not_found">This report no longer exists on the server. Refresh the list.</string>
+    <string name="error_unknown">Something went wrong. Please try again.</string>
+    <string name="ok">OK</string>
     <string name="delete">Delete</string>
     <string name="incident_missing">This incident is no longer available.</string>
 </resources>

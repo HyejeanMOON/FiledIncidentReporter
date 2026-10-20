@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.incidents
+package com.hyejeanmoon.fieldincidentreporter.domain.model
 
 data class Incident(
     val id: String,
@@ -6,8 +6,4 @@ data class Incident(
     val location: String,
     val description: String,
     val photoUris: List<String> = emptyList(),
-)
-
-data class IncidentUiState(
-    val incidents: List<Incident> = emptyList(),
 )
