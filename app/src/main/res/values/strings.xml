@@ -1,4 +1,32 @@
 <resources>
     <string name="app_name">Field Incident Reporter</string>
-    <string name="welcome_message">Report and track field incidents.</string>
+    <string name="incident_list_heading">Incident reports</string>
+    <string name="report_incident">Report incident</string>
+    <string name="empty_list_title">No incidents yet</string>
+    <string name="empty_list_description">When you find a maintenance issue, create a report with its location and details.</string>
+    <string name="new_incident_title">New incident</string>
+    <string name="edit_incident_title">Edit incident</string>
+    <string name="form_intro">Add the details a maintenance team needs to understand and locate the issue.</string>
+    <string name="incident_title_label">Incident title</string>
+    <string name="location_label">Location</string>
+    <string name="description_label">Description</string>
+    <string name="photos_label">Photos</string>
+    <string name="photos_help">Add pictures that help identify the issue.</string>
+    <string name="choose_photos">Choose photos</string>
+    <string name="remove_photos">Remove all photos</string>
+    <string name="photos_selected">%1$d photos selected</string>
+    <string name="validation_required_fields">Complete the title, location, and description to continue.</string>
+    <string name="photo_count">%1$d photos attached</string>
+    <string name="submit_incident">Submit incident</string>
+    <string name="save_changes">Save changes</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="back_to_list">Back to reports</string>
+    <string name="incident_details_title">Incident details</string>
+    <string name="edit">Edit</string>
+    <string name="delete_incident">Delete incident</string>
+    <string name="delete_confirmation_title">Delete this incident?</string>
+    <string name="delete_confirmation_message">This removes the incident from the current prototype session.</string>
+    <string name="delete">Delete</string>
+    <string name="incident_missing">This incident is no longer available.</string>
 </resources>

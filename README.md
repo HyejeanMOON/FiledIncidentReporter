@@ -25,4 +25,4 @@ app/                 Android application module
 gradle/              Centralized dependency and plugin versions
 ```
 
-The initial screen is a Compose starter screen. Incident data, repository/API integration, and create/detail/edit flows can be added on this foundation.
+The app currently includes incident list, create/edit form, and detail screens. Create, edit, and delete actions work against in-memory prototype data and are not connected to the mock API yet. The app starts with an empty incident list; sample data is used only in Compose previews.
