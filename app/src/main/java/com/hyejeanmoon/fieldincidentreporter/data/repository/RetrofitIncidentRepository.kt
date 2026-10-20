@@ -8,8 +8,9 @@ import com.hyejeanmoon.fieldincidentreporter.data.toIncident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import retrofit2.HttpException
+import javax.inject.Inject
 
-internal class RetrofitIncidentRepository(private val api: IncidentApi) : IncidentRepository {
+internal class RetrofitIncidentRepository @Inject constructor(private val api: IncidentApi) : IncidentRepository {
     override suspend fun getIncidents() = incidentRequest {
         api.getIncidents().map { it.toIncident() }
     }

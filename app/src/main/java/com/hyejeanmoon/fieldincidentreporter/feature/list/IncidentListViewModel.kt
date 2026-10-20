@@ -1,19 +1,21 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.list
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class IncidentListViewModel(private val repository: IncidentRepository) : ViewModel() {
+@HiltViewModel
+class IncidentListViewModel @Inject constructor(private val repository: IncidentRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentListUiState())
     val uiState = _uiState.asStateFlow()
     private val eventChannel = Channel<IncidentListEvent>(Channel.BUFFERED)
@@ -82,15 +84,5 @@ class IncidentListViewModel(private val repository: IncidentRepository) : ViewMo
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    companion object {
-        fun factory(repository: IncidentRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                require(modelClass.isAssignableFrom(IncidentListViewModel::class.java))
-                return IncidentListViewModel(repository) as T
-            }
-        }
     }
 }

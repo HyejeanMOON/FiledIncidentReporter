@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".IncidentReporterApplication"
         android:allowBackup="true"
         android:label="Field Incident Reporter"
         android:supportsRtl="true"

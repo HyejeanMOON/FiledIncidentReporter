@@ -1,5 +1,7 @@
 package com.hyejeanmoon.fieldincidentreporter.feature
 
+import android.net.Uri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -8,7 +10,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,7 +17,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.MissingIncidentScreen
@@ -30,14 +30,14 @@ private object IncidentDestinations {
     const val Detail = "incident/{incidentId}"
     const val Report = "report?incidentId={incidentId}"
 
-    fun detail(id: String) = "incident/$id"
-    fun edit(id: String) = "report?incidentId=$id"
+    fun detail(id: String) = "incident/${Uri.encode(id)}"
+    fun edit(id: String) = "report?incidentId=${Uri.encode(id)}"
 }
 
 @Composable
-fun IncidentApp(repository: IncidentRepository) {
-    val listViewModel: IncidentListViewModel = viewModel(factory = IncidentListViewModel.factory(repository))
-    val formViewModel: IncidentFormViewModel = viewModel(factory = IncidentFormViewModel.factory(repository))
+fun IncidentApp() {
+    val listViewModel: IncidentListViewModel = hiltViewModel()
+    val formViewModel: IncidentFormViewModel = hiltViewModel()
     val listState by listViewModel.uiState.collectAsStateWithLifecycle()
     val formState by formViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()

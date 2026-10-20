@@ -1,6 +1,6 @@
 # Field Incident Reporter
 
-An Android-native prototype for reporting and managing facility maintenance incidents. It uses Jetpack Compose, a ViewModel, Retrofit, and a local json-server API.
+An Android-native prototype for reporting and managing facility maintenance incidents. It uses Jetpack Compose, Hilt-injected ViewModels, Retrofit, and a local json-server API.
 
 ## Run the mock API
 
@@ -34,4 +34,4 @@ The app loads reports on launch, shows loading and request errors, and updates t
 
 ## Code organization
 
-The top-level packages separate responsibilities: `domain/model`, `domain/repository`, and `domain/error` contain the app model, repository contract, and failure types; `data` contains API payloads, Retrofit endpoints, mappers, and the repository implementation; `feature` contains the UI. Within `feature`, `list` and `form` each have their own screen, ViewModel, state, and event; `detail` contains the detail screen. `MainActivity` creates the concrete repository and injects it into `IncidentApp`, which coordinates navigation and passes a saved report from the form ViewModel to the list ViewModel.
+The top-level packages separate responsibilities: `domain/model`, `domain/repository`, and `domain/error` contain the app model, repository contract, and failure types; `data` contains API payloads, Retrofit endpoints, mappers, the repository implementation, and Hilt bindings in `data/di`; `feature` contains the UI. Within `feature`, `list` and `form` each have their own screen, Hilt ViewModel, state, and event; `detail` contains the detail screen. `IncidentReporterApplication` initializes Hilt, and `IncidentApp` coordinates navigation and passes a saved report from the form ViewModel to the list ViewModel.
