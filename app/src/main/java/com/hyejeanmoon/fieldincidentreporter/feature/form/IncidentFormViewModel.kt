@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +21,7 @@ private const val TITLE_KEY = "form_title"
 private const val LOCATION_KEY = "form_location"
 private const val DESCRIPTION_KEY = "form_description"
 private const val PHOTOS_KEY = "form_photos"
+private const val VALIDATED_FIELDS_KEY = "form_validated_fields"
 
 @HiltViewModel
 class IncidentFormViewModel @Inject constructor(
@@ -48,6 +50,15 @@ class IncidentFormViewModel @Inject constructor(
                 IncidentFormStateChange.PhotosSelected(event.uris), persistForm = true,
             )
             IncidentFormUiEvent.PhotosRemoved -> reduce(IncidentFormStateChange.PhotosRemoved, persistForm = true)
+            is IncidentFormUiEvent.FieldFocusChanged -> {
+                val wasFocused = event.field in _uiState.value.focusedFields
+                if (event.isFocused || wasFocused) {
+                    reduce(
+                        IncidentFormStateChange.FieldFocusChanged(event.field, event.isFocused),
+                        persistForm = !event.isFocused,
+                    )
+                }
+            }
             IncidentFormUiEvent.Submit -> submit()
         }
     }
@@ -109,6 +120,7 @@ class IncidentFormViewModel @Inject constructor(
         savedStateHandle[LOCATION_KEY] = state.location
         savedStateHandle[DESCRIPTION_KEY] = state.description
         savedStateHandle[PHOTOS_KEY] = ArrayList(state.photoUris)
+        savedStateHandle[VALIDATED_FIELDS_KEY] = ArrayList(state.validatedFields.map { it.name })
     }
 }
 
@@ -119,4 +131,8 @@ private fun restoreFormState(handle: SavedStateHandle): IncidentFormUiState = In
     location = handle[LOCATION_KEY] ?: "",
     description = handle[DESCRIPTION_KEY] ?: "",
     photoUris = handle.get<ArrayList<String>>(PHOTOS_KEY)?.toList().orEmpty(),
+    validatedFields = handle.get<ArrayList<String>>(VALIDATED_FIELDS_KEY)
+        ?.mapNotNull { value -> RequiredIncidentField.entries.firstOrNull { it.name == value } }
+        ?.toSet()
+        .orEmpty(),
 ).let { IncidentFormUiStateReducer.reduce(it, IncidentFormStateChange.Restored) }

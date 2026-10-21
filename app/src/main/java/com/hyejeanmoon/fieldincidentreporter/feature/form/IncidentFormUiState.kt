@@ -12,6 +12,8 @@ data class IncidentFormUiState(
     val description: String = "",
     val photoUris: List<String> = emptyList(),
     val missingFields: List<RequiredIncidentField> = emptyList(),
+    val focusedFields: Set<RequiredIncidentField> = emptySet(),
+    val validatedFields: Set<RequiredIncidentField> = emptySet(),
     val isSaving: Boolean = false,
     val error: IncidentFailure? = null,
     val savedIncident: Incident? = null,

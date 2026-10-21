@@ -2,6 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.model.missingRequiredFields
 
 internal sealed interface IncidentFormStateChange {
@@ -11,6 +12,7 @@ internal sealed interface IncidentFormStateChange {
     data class DescriptionChanged(val value: String) : IncidentFormStateChange
     data class PhotosSelected(val uris: List<String>) : IncidentFormStateChange
     data object PhotosRemoved : IncidentFormStateChange
+    data class FieldFocusChanged(val field: RequiredIncidentField, val isFocused: Boolean) : IncidentFormStateChange
     data object SaveStarted : IncidentFormStateChange
     data class SaveSucceeded(val incident: Incident) : IncidentFormStateChange
     data class SaveFailed(val failure: IncidentFailure) : IncidentFormStateChange
@@ -37,6 +39,14 @@ internal object IncidentFormUiStateReducer {
             previous.edit { copy(photoUris = change.uris) }
         }
         IncidentFormStateChange.PhotosRemoved -> previous.edit { copy(photoUris = emptyList()) }
+        is IncidentFormStateChange.FieldFocusChanged -> if (change.isFocused) {
+            previous.copy(focusedFields = previous.focusedFields + change.field)
+        } else if (change.field in previous.focusedFields) {
+            previous.copy(
+                focusedFields = previous.focusedFields - change.field,
+                validatedFields = previous.validatedFields + change.field,
+            )
+        } else previous
         IncidentFormStateChange.SaveStarted -> if (previous.isSubmitEnabled) {
             previous.copy(isSaving = true, error = null)
         } else previous

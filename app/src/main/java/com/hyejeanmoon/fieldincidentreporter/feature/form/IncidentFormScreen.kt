@@ -1,6 +1,5 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,7 +43,11 @@ fun IncidentFormScreen(
     onChoosePhotos: () -> Unit,
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
-    val visibleMissingFields = uiState.missingFields
+    val visibleMissingFields = uiState.missingFields.filter { it in uiState.validatedFields }
+    val titleError = RequiredIncidentField.TITLE in visibleMissingFields
+    val locationError = RequiredIncidentField.LOCATION in visibleMissingFields
+    val descriptionError = RequiredIncidentField.DESCRIPTION in visibleMissingFields
+    val photosError = RequiredIncidentField.PHOTOS in visibleMissingFields
     val canEdit = !uiState.isSaving && uiState.savedIncident == null
     Scaffold(
         topBar = {
@@ -83,27 +87,48 @@ fun IncidentFormScreen(
                 value = uiState.title,
                 onValueChange = { onEvent(IncidentFormUiEvent.TitleChanged(it)) },
                 label = { Text(stringResource(R.string.incident_title_label)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.TITLE, focusState.isFocused))
+                    },
                 singleLine = true,
-                isError = RequiredIncidentField.TITLE in visibleMissingFields,
+                isError = titleError,
+                supportingText = {
+                    if (titleError) Text(stringResource(R.string.required_field_error))
+                },
                 enabled = canEdit,
             )
             OutlinedTextField(
                 value = uiState.location,
                 onValueChange = { onEvent(IncidentFormUiEvent.LocationChanged(it)) },
                 label = { Text(stringResource(R.string.location_label)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.LOCATION, focusState.isFocused))
+                    },
                 singleLine = true,
-                isError = RequiredIncidentField.LOCATION in visibleMissingFields,
+                isError = locationError,
+                supportingText = {
+                    if (locationError) Text(stringResource(R.string.required_field_error))
+                },
                 enabled = canEdit,
             )
             OutlinedTextField(
                 value = uiState.description,
                 onValueChange = { onEvent(IncidentFormUiEvent.DescriptionChanged(it)) },
                 label = { Text(stringResource(R.string.description_label)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.DESCRIPTION, focusState.isFocused))
+                    },
                 minLines = 4,
-                isError = RequiredIncidentField.DESCRIPTION in visibleMissingFields,
+                isError = descriptionError,
+                supportingText = {
+                    if (descriptionError) Text(stringResource(R.string.required_field_error))
+                },
                 enabled = canEdit,
             )
             Column(
@@ -111,7 +136,7 @@ fun IncidentFormScreen(
                     .fillMaxWidth()
                     .border(
                         width = 1.dp,
-                        color = if (RequiredIncidentField.PHOTOS in visibleMissingFields) {
+                        color = if (photosError) {
                             MaterialTheme.colorScheme.error
                         } else {
                             Color.Transparent
@@ -124,7 +149,7 @@ fun IncidentFormScreen(
                 Text(
                     text = stringResource(R.string.photos_label),
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (RequiredIncidentField.PHOTOS in visibleMissingFields) {
+                    color = if (photosError) {
                         MaterialTheme.colorScheme.error
                     } else {
                         MaterialTheme.colorScheme.onSurface
@@ -135,7 +160,20 @@ fun IncidentFormScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedButton(onClick = onChoosePhotos, enabled = canEdit) {
+                if (photosError) {
+                    Text(
+                        text = stringResource(R.string.required_photos_error),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                OutlinedButton(
+                    onClick = onChoosePhotos,
+                    modifier = Modifier.onFocusChanged { focusState ->
+                        onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
+                    },
+                    enabled = canEdit,
+                ) {
                     Text(stringResource(R.string.choose_photos))
                 }
                 if (uiState.photoUris.isNotEmpty()) {
@@ -149,20 +187,6 @@ fun IncidentFormScreen(
                     ) {
                         Text(stringResource(R.string.remove_photos))
                     }
-                }
-            }
-            if (visibleMissingFields.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.validation_required_fields),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                visibleMissingFields.forEach { field ->
-                    Text(
-                        text = "• ${stringResource(field.labelResId)}",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                 }
             }
             Button(
@@ -189,15 +213,6 @@ private val PreviewIncident = Incident(
     location = "Workshop · Bay 3",
     description = "The control panel does not respond when the machine is switched on.",
 )
-
-@get:StringRes
-private val RequiredIncidentField.labelResId: Int
-    get() = when (this) {
-        RequiredIncidentField.TITLE -> R.string.incident_title_label
-        RequiredIncidentField.LOCATION -> R.string.location_label
-        RequiredIncidentField.DESCRIPTION -> R.string.description_label
-        RequiredIncidentField.PHOTOS -> R.string.photos_label
-    }
 
 @Preview(name = "New incident form", showBackground = true)
 @Composable
