@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.AlertDialog
@@ -138,6 +140,30 @@ fun IncidentApp() {
                     defaultValue = null
                 },
             ),
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+                ) + fadeIn(animationSpec = tween(ScreenTransitionDurationMillis))
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+                ) + fadeOut(animationSpec = tween(ScreenTransitionDurationMillis))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+                ) + fadeIn(animationSpec = tween(ScreenTransitionDurationMillis))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+                ) + fadeOut(animationSpec = tween(ScreenTransitionDurationMillis))
+            },
         ) { entry ->
             val id = entry.arguments?.getString("incidentId")
             val incident = listState.incidents.firstOrNull { it.id == id }
