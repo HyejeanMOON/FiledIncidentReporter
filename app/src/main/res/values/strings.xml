@@ -15,7 +15,7 @@
     <string name="choose_photos">Choose photos</string>
     <string name="remove_photos">Remove all photos</string>
     <string name="photos_selected">%1$d photos selected</string>
-    <string name="validation_required_fields">Complete the title, location, and description to continue.</string>
+    <string name="validation_required_fields">Complete the following required fields to continue:</string>
     <string name="photo_count">%1$d photos attached</string>
     <string name="submit_incident">Submit incident</string>
     <string name="save_changes">Save changes</string>

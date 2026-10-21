@@ -8,4 +8,5 @@ data class IncidentListUiState(
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
     val error: IncidentFailure? = null,
+    val deletedFromEntryId: String? = null,
 )

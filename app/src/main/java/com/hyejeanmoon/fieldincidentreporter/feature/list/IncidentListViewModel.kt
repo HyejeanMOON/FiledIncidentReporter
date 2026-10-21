@@ -7,10 +7,9 @@ import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepositor
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,8 +17,6 @@ import javax.inject.Inject
 class IncidentListViewModel @Inject constructor(private val repository: IncidentRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentListUiState())
     val uiState = _uiState.asStateFlow()
-    private val eventChannel = Channel<IncidentListEvent>(Channel.BUFFERED)
-    val events = eventChannel.receiveAsFlow()
     private var localRevision = 0L
 
     init { refresh() }
@@ -27,22 +24,22 @@ class IncidentListViewModel @Inject constructor(private val repository: Incident
     fun refresh() {
         if (_uiState.value.isLoading) return
         val startingRevision = localRevision
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+        reduce(IncidentListStateChange.RefreshStarted)
         viewModelScope.launch {
             var needsRefresh = false
             try {
                 val incidents = repository.getIncidents()
                 if (startingRevision == localRevision) {
-                    _uiState.value = _uiState.value.copy(incidents = incidents)
+                    reduce(IncidentListStateChange.IncidentsLoaded(incidents))
                 } else {
                     needsRefresh = true
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _uiState.value = _uiState.value.copy(error = error.toIncidentFailure())
+                reduce(IncidentListStateChange.RefreshFailed(error.toIncidentFailure()))
             } finally {
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                reduce(IncidentListStateChange.RefreshFinished)
                 if (needsRefresh) refresh()
             }
         }
@@ -50,39 +47,36 @@ class IncidentListViewModel @Inject constructor(private val repository: Incident
 
     fun onIncidentSaved(incident: Incident) {
         localRevision++
-        val incidents = _uiState.value.incidents
-        _uiState.value = _uiState.value.copy(
-            incidents = if (incidents.any { it.id == incident.id }) {
-                incidents.map { if (it.id == incident.id) incident else it }
-            } else {
-                listOf(incident) + incidents
-            },
-        )
+        reduce(IncidentListStateChange.IncidentSaved(incident))
     }
 
     fun removeIncident(originEntryId: String, id: String) {
         if (_uiState.value.isDeleting) return
-        _uiState.value = _uiState.value.copy(isDeleting = true, error = null)
+        reduce(IncidentListStateChange.DeleteStarted)
         viewModelScope.launch {
             try {
                 repository.delete(id)
                 localRevision++
-                _uiState.value = _uiState.value.copy(
-                    incidents = _uiState.value.incidents.filterNot { it.id == id },
-                    error = null,
-                )
-                eventChannel.send(IncidentListEvent(originEntryId))
+                reduce(IncidentListStateChange.Deleted(id, originEntryId))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _uiState.value = _uiState.value.copy(error = error.toIncidentFailure())
+                reduce(IncidentListStateChange.DeleteFailed(error.toIncidentFailure()))
             } finally {
-                _uiState.value = _uiState.value.copy(isDeleting = false)
+                reduce(IncidentListStateChange.DeleteFinished)
             }
         }
     }
 
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        reduce(IncidentListStateChange.ErrorCleared)
+    }
+
+    fun acknowledgeDeletion(entryId: String) {
+        reduce(IncidentListStateChange.DeleteAcknowledged(entryId))
+    }
+
+    private fun reduce(change: IncidentListStateChange) {
+        _uiState.update { IncidentListUiStateReducer.reduce(it, change) }
     }
 }

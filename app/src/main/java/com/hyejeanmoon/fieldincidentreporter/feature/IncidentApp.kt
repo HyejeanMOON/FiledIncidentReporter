@@ -17,15 +17,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hyejeanmoon.fieldincidentreporter.R
-import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.form.IncidentFormRoute
-import com.hyejeanmoon.fieldincidentreporter.feature.form.IncidentFormViewModel
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListViewModel
 
@@ -43,42 +42,28 @@ private const val ScreenTransitionDurationMillis = 320
 @Composable
 fun IncidentApp() {
     val listViewModel: IncidentListViewModel = hiltViewModel()
-    val formViewModel: IncidentFormViewModel = hiltViewModel()
     val listState by listViewModel.uiState.collectAsStateWithLifecycle()
-    val formState by formViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
+    val currentEntry by navController.currentBackStackEntryAsState()
 
-    LaunchedEffect(listViewModel, navController) {
-        listViewModel.events.collect { event ->
-            if (navController.currentBackStackEntry?.id == event.deletedFromEntryId) {
+    val deletedFromEntryId = listState.deletedFromEntryId
+    LaunchedEffect(deletedFromEntryId, navController) {
+        if (deletedFromEntryId != null) {
+            if (navController.currentBackStackEntry?.id == deletedFromEntryId) {
                 navController.popBackStack()
             }
+            listViewModel.acknowledgeDeletion(deletedFromEntryId)
         }
     }
 
-    LaunchedEffect(formViewModel, listViewModel, navController) {
-        formViewModel.events.collect { event ->
-            listViewModel.onIncidentSaved(event.savedIncident)
-            if (navController.currentBackStackEntry?.id == event.originEntryId) {
-                navController.popBackStack()
-            }
-        }
-    }
-
-    (formState.error ?: listState.error)?.let { error ->
-        val message = when (error) {
-            IncidentFailure.NETWORK -> R.string.error_network
-            IncidentFailure.SERVER -> R.string.error_server
-            IncidentFailure.NOT_FOUND -> R.string.error_not_found
-            IncidentFailure.UNKNOWN -> R.string.error_unknown
-        }
-        val clearError = if (formState.error != null) formViewModel::clearError else listViewModel::clearError
+    val listError = if (currentEntry?.destination?.route == IncidentDestinations.Report) null else listState.error
+    listError?.let { error ->
         AlertDialog(
-            onDismissRequest = clearError,
+            onDismissRequest = listViewModel::clearError,
             title = { Text(stringResource(R.string.error_title)) },
-            text = { Text(stringResource(message)) },
+            text = { Text(stringResource(error.messageResId())) },
             confirmButton = {
-                TextButton(onClick = clearError) { Text(stringResource(R.string.ok)) }
+                TextButton(onClick = listViewModel::clearError) { Text(stringResource(R.string.ok)) }
             },
         )
     }
@@ -164,10 +149,12 @@ fun IncidentApp() {
                 IncidentFormRoute(
                     incident = incident,
                     onBack = { navController.popBackStack() },
-                    onSave = { title, location, description, photos ->
-                        formViewModel.saveIncident(entry.id, id, title, location, description, photos)
+                    onSaved = { savedIncident ->
+                        listViewModel.onIncidentSaved(savedIncident)
+                        if (navController.currentBackStackEntry?.id == entry.id) {
+                            navController.popBackStack()
+                        }
                     },
-                    isSaving = formState.isSaving,
                 )
             }
         }
