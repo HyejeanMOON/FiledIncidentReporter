@@ -7,13 +7,16 @@ A server project built with Spring Boot, Kotlin, and Maven.
 - JDK 17 or later
 - Maven 3.6.3 or later
 
-## Run
+## Initialize and run
 
 ```bash
-mvn spring-boot:run
+./init.sh
+./start.sh
 ```
 
-The server listens on `http://localhost:8080` by default.
+Run `./init.sh` once after cloning the project. It builds the application, creates the photo directory and local H2 database, and applies the Flyway migrations without starting the HTTP server. Run `./start.sh` for normal use; it listens on `http://localhost:8080` by default. Arguments to `start.sh` are passed to Spring Boot, for example `./start.sh --server.port=8081`.
+
+Re-run `./init.sh` after changing application code or dependencies to rebuild the JAR. Existing incidents and photos are preserved.
 
 ## API
 
