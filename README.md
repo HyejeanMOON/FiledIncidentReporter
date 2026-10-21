@@ -25,7 +25,7 @@ The server listens on `http://localhost:8080` by default.
 
 `PUT /incidents/{id}` accepts `multipart/form-data` with an `incident` JSON part (`id`, `title`, `location`, `description`, `retainedPhotoUris`) and optional new `photos` file parts. The `id` must match the path. Existing photos omitted from `retainedPhotoUris` are removed. A missing ID returns `404 Not Found`.
 
-`DELETE /incidents/{id}` removes an incident and returns `204 No Content`. A missing ID returns `404 Not Found`.
+`DELETE /incidents/{id}` removes an incident and its stored photo files, then returns `204 No Content`. A missing ID returns `404 Not Found`.
 
 Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts. The database file is ignored by Git.
 

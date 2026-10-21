@@ -21,7 +21,13 @@ class IncidentService(
 ) {
     @Transactional
     fun delete(id: String) {
+        val incident = repository.findById(id) ?: throw IncidentNotFoundException()
         if (!repository.delete(id)) throw IncidentNotFoundException()
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                incident.photoUris.forEach(photoStore::delete)
+            }
+        })
     }
 
     @Transactional

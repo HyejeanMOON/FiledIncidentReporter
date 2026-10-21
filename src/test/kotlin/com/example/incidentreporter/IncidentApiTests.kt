@@ -18,6 +18,7 @@ import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.annotation.Propagation
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -29,9 +30,11 @@ class IncidentApiTests @Autowired constructor(
     private val jdbc: JdbcClient,
 ) {
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun `delete removes incident and photos`() {
         val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
+        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
 
         mvc.perform(delete("/incidents/$id")).andExpect(status().isNoContent)
         val incidents = jdbc.sql("SELECT COUNT(*) FROM incidents WHERE id = :id")
@@ -40,6 +43,7 @@ class IncidentApiTests @Autowired constructor(
             .param("id", id).query(Int::class.java).single()
         assertEquals(0, incidents)
         assertEquals(0, photos)
+        assertEquals(false, Files.exists(Path.of("target/test-photos").resolve(photoUri.removePrefix("/photos/"))))
         mvc.perform(delete("/incidents/$id")).andExpect(status().isNotFound)
     }
 
