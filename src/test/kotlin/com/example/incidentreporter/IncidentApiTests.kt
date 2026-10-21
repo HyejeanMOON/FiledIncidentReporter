@@ -10,6 +10,8 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -21,6 +23,41 @@ class IncidentApiTests @Autowired constructor(
     private val mvc: MockMvc,
     private val jdbc: JdbcClient,
 ) {
+    @Test
+    fun `update replaces incident fields and photos`() {
+        val created = mvc.perform(
+            post("/incidents")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"title":"Old","location":"Plant","description":"Old details","photoUris":["content://old"]}"""),
+        ).andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+
+        mvc.perform(
+            put("/incidents/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"id":"$id","title":"New","location":"Shop","description":"New details","photoUris":["content://new"]}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.title").value("New"))
+            .andExpect(jsonPath("$.photoUris[0]").value("content://new"))
+
+        val stored = jdbc.sql("SELECT title FROM incidents WHERE id = :id")
+            .param("id", id).query(String::class.java).single()
+        assertEquals("New", stored)
+        val photos = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id")
+            .param("id", id).query(String::class.java).list()
+        assertEquals(listOf("content://new"), photos)
+    }
+
+    @Test
+    fun `update rejects missing incident`() {
+        mvc.perform(
+            put("/incidents/missing")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"id":"missing","title":"New","location":"Shop","description":"Details","photoUris":["content://new"]}"""),
+        ).andExpect(status().isNotFound)
+    }
+
     @Test
     fun `list returns bounded pages with photo URIs`() {
         repeat(3) { index ->

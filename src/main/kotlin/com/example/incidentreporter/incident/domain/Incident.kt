@@ -37,3 +37,5 @@ data class IncidentInput(
 }
 
 class InvalidIncidentException(message: String) : RuntimeException(message)
+
+class IncidentNotFoundException : RuntimeException("Incident not found")

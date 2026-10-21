@@ -21,6 +21,8 @@ The server listens on `http://localhost:8080` by default.
 
 `GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first.
 
+`PUT /incidents/{id}` replaces an incident and its photo URI list. The body includes the same fields as POST plus an `id` matching the path. A missing ID returns `404 Not Found`.
+
 Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts. The database file is ignored by Git.
 
 ## Test and package

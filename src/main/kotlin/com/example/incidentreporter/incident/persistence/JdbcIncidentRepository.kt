@@ -8,6 +8,30 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
+    override fun update(incident: Incident): Boolean {
+        val updated = jdbc.sql(
+            "UPDATE incidents SET title = :title, location = :location, description = :description WHERE id = :id",
+        )
+            .param("id", incident.id)
+            .param("title", incident.title)
+            .param("location", incident.location)
+            .param("description", incident.description)
+            .update()
+        if (updated == 0) return false
+
+        jdbc.sql("DELETE FROM incident_photos WHERE incident_id = :id")
+            .param("id", incident.id)
+            .update()
+        incident.photoUris.forEachIndexed { position, uri ->
+            jdbc.sql("INSERT INTO incident_photos (incident_id, position, photo_uri) VALUES (:id, :position, :uri)")
+                .param("id", incident.id)
+                .param("position", position)
+                .param("uri", uri)
+                .update()
+        }
+        return true
+    }
+
     override fun findPage(page: Int, size: Int): IncidentPage {
         val rows = jdbc.sql(
             "SELECT id, title, location, description FROM incidents " +

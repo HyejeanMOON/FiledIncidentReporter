@@ -5,12 +5,21 @@ import com.example.incidentreporter.incident.domain.IncidentInput
 import com.example.incidentreporter.incident.domain.IncidentRepository
 import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
+import com.example.incidentreporter.incident.domain.IncidentNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
 class IncidentService(private val repository: IncidentRepository) {
+    @Transactional
+    fun update(id: String, input: IncidentInput): Incident {
+        val valid = input.validated()
+        val incident = Incident(id, valid.title, valid.location, valid.description, valid.photoUris)
+        if (!repository.update(incident)) throw IncidentNotFoundException()
+        return incident
+    }
+
     @Transactional(readOnly = true)
     fun list(page: Int, size: Int): IncidentPage {
         if (page < 0 || size !in 1..100) {
