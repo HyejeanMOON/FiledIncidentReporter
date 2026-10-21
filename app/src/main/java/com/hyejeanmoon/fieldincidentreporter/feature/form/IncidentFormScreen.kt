@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -31,9 +32,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
+import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,6 +222,22 @@ fun IncidentFormScreen(
                 enabled = !uiState.isSaving,
             ) {
                 Text(stringResource(R.string.cancel))
+            }
+        }
+    }
+    if (uiState.isSaving && uiState.incidentId == null) {
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
+        ) {
+            Surface(shape = MaterialTheme.shapes.large) {
+                LoadingIncidentScreen(
+                    message = stringResource(R.string.submitting_incident),
+                    modifier = Modifier.padding(24.dp),
+                )
             }
         }
     }

@@ -22,9 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.hyejeanmoon.fieldincidentreporter.R
 
 @Composable
-fun LoadingIncidentScreen(message: String? = null) {
+fun LoadingIncidentScreen(message: String? = null, modifier: Modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
