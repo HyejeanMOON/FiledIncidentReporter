@@ -1,6 +1,7 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.detail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,9 +23,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,12 +39,18 @@ import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncidentDetailScreen(
-    incident: Incident,
+    uiState: IncidentDetailUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    isDeleting: Boolean,
 ) {
+    val incident = uiState.incident
+    if (incident == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     var showDeleteConfirmation by rememberSaveable(incident.id) { mutableStateOf(false) }
     Scaffold(
         topBar = {
@@ -56,7 +65,7 @@ fun IncidentDetailScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onEdit, enabled = !isDeleting) {
+                    TextButton(onClick = onEdit, enabled = !uiState.isDeleting) {
                         Text(stringResource(R.string.edit))
                     }
                 },
@@ -85,7 +94,7 @@ fun IncidentDetailScreen(
             OutlinedButton(
                 onClick = { showDeleteConfirmation = true },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isDeleting,
+                enabled = !uiState.isDeleting,
             ) {
                 Text(stringResource(R.string.delete_incident), color = MaterialTheme.colorScheme.error)
             }
@@ -135,11 +144,10 @@ private val PreviewIncident = Incident(
 private fun IncidentDetailScreenPreview() {
     FieldIncidentReporterTheme {
         IncidentDetailScreen(
-            incident = PreviewIncident,
+            uiState = IncidentDetailUiState(incident = PreviewIncident),
             onBack = {},
             onEdit = {},
             onDelete = {},
-            isDeleting = false,
         )
     }
 }

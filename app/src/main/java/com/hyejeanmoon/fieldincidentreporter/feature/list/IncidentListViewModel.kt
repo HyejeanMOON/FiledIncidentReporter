@@ -50,22 +50,9 @@ class IncidentListViewModel @Inject constructor(private val repository: Incident
         reduce(IncidentListStateChange.IncidentSaved(incident))
     }
 
-    fun removeIncident(originEntryId: String, id: String) {
-        if (_uiState.value.isDeleting) return
-        reduce(IncidentListStateChange.DeleteStarted)
-        viewModelScope.launch {
-            try {
-                repository.delete(id)
-                localRevision++
-                reduce(IncidentListStateChange.Deleted(id, originEntryId))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                reduce(IncidentListStateChange.DeleteFailed(error.toIncidentFailure()))
-            } finally {
-                reduce(IncidentListStateChange.DeleteFinished)
-            }
-        }
+    fun onIncidentDeleted(originEntryId: String, id: String) {
+        localRevision++
+        reduce(IncidentListStateChange.Deleted(id, originEntryId))
     }
 
     fun clearError() {

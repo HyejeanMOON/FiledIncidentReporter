@@ -6,7 +6,6 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 data class IncidentListUiState(
     val incidents: List<Incident> = emptyList(),
     val isLoading: Boolean = false,
-    val isDeleting: Boolean = false,
     val error: IncidentFailure? = null,
     val deletedFromEntryId: String? = null,
 )

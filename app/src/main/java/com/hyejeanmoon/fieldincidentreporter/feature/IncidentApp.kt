@@ -23,7 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hyejeanmoon.fieldincidentreporter.R
-import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailRoute
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.form.IncidentFormRoute
@@ -120,14 +120,13 @@ fun IncidentApp() {
             } else if (incident == null) {
                 MissingIncidentScreen(onBack = { navController.popBackStack() })
             } else {
-                IncidentDetailScreen(
+                IncidentDetailRoute(
                     incident = incident,
                     onBack = { navController.popBackStack() },
                     onEdit = { navController.navigate(IncidentDestinations.edit(incident.id)) },
-                    onDelete = {
-                        listViewModel.removeIncident(entry.id, incident.id)
+                    onDeleted = { deletedId ->
+                        listViewModel.onIncidentDeleted(entry.id, deletedId)
                     },
-                    isDeleting = listState.isDeleting,
                 )
             }
         }
