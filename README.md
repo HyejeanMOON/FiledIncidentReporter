@@ -17,6 +17,8 @@ The server listens on `http://localhost:8080` by default.
 
 ## API
 
+Errors use RFC 9457 Problem Details (`application/problem+json`). The `code` field is stable for clients; `detail` is descriptive text and may change. Codes are `INCIDENT_NOT_FOUND` (404), `RESOURCE_NOT_FOUND` (404), `INVALID_INCIDENT` (400), `INVALID_REQUEST` (other malformed requests), `PAYLOAD_TOO_LARGE` (413), and `INTERNAL_ERROR` (500). Unexpected server failures are logged on the server and return a generic detail instead of internal exception text.
+
 `POST /incidents` accepts `multipart/form-data` with an `incident` JSON part (`title`, `location`, `description`) and 1 to 20 `photos` file parts. Each photo must be an image of at most 10 MB. The response contains a generated string ID and server photo paths (`201 Created`). Invalid fields return `400 Bad Request`.
 
 `GET /photos/{filename}` streams a stored photo. Incident responses contain these relative paths so clients can resolve them against the API base URL.

@@ -40,6 +40,7 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(jsonPath("$.title").value("Find me"))
             .andExpect(jsonPath("$.photoUris[0]").value(photoUri))
         mvc.perform(get("/incidents/missing")).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
     }
 
     @Test
@@ -58,6 +59,7 @@ class IncidentApiTests @Autowired constructor(
         assertEquals(0, photos)
         assertEquals(false, Files.exists(Path.of("target/test-photos").resolve(photoUri.removePrefix("/photos/"))))
         mvc.perform(delete("/incidents/$id")).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
     }
 
     @Test
@@ -82,6 +84,7 @@ class IncidentApiTests @Autowired constructor(
     @Test
     fun `update rejects missing incident`() {
         update("missing", photos = listOf("new")).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
     }
 
     @Test
@@ -119,6 +122,7 @@ class IncidentApiTests @Autowired constructor(
     @Test
     fun `invalid page size is rejected`() {
         mvc.perform(get("/incidents?page=0&size=101")).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
     }
 
     @Test
@@ -149,11 +153,22 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(status().isOk)
             .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes("one".toByteArray()))
         mvc.perform(get("/photos/missing.jpg")).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
     }
 
     @Test
     fun `invalid incident is rejected`() {
         create(" ").andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+    }
+
+    @Test
+    fun `malformed request has a stable error code`() {
+        val metadata = MockMultipartFile("incident", "", MediaType.APPLICATION_JSON_VALUE, "{".toByteArray())
+        mvc.perform(multipart("/incidents").file(metadata))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+            .andExpect(jsonPath("$.status").value(400))
     }
 
     private fun create(title: String, photos: List<String> = listOf("one")): ResultActions {

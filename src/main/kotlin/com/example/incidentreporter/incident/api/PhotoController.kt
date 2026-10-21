@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 class PhotoController(private val photoStore: PhotoStore) {
     @GetMapping("/photos/{filename}")
     fun get(@PathVariable filename: String): ResponseEntity<Resource> {
-        val photo = photoStore.load("/photos/$filename") ?: return ResponseEntity.notFound().build()
+        val photo = photoStore.load("/photos/$filename") ?: throw ResourceNotFoundException()
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(photo.contentType))
             .contentLength(photo.size)
