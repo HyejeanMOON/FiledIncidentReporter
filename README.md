@@ -26,7 +26,7 @@ Errors use RFC 9457 Problem Details (`application/problem+json`). The `code` fie
 
 `GET /photos/{filename}` streams a stored photo. Incident responses contain these relative paths so clients can resolve them against the API base URL.
 
-`GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first.
+`GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first. Each item includes `photos`, an array of displayable base64 data URIs. Decodable images are resized to at most 512 pixels on either side and encoded as JPEG at 70% quality. Formats unavailable to the server's image decoder are returned as their original data URI.
 
 `GET /incidents/{id}` returns one incident, including its photo paths. A missing ID returns `404 Not Found`.
 

@@ -3,7 +3,6 @@ package com.example.incidentreporter.incident.api
 import com.example.incidentreporter.incident.application.IncidentService
 import com.example.incidentreporter.incident.domain.Incident
 import com.example.incidentreporter.incident.domain.IncidentInput
-import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -49,17 +48,26 @@ data class IncidentResponse(
 fun Incident.toResponse() = IncidentResponse(id, title, location, description, photoUris)
 
 data class IncidentPageResponse(
-    val items: List<IncidentResponse>,
+    val items: List<IncidentListItemResponse>,
     val page: Int,
     val size: Int,
     val hasNext: Boolean,
 )
 
-fun IncidentPage.toResponse() = IncidentPageResponse(items.map { it.toResponse() }, page, size, hasNext)
+data class IncidentListItemResponse(
+    val id: String,
+    val title: String,
+    val location: String,
+    val description: String,
+    val photos: List<String>,
+)
 
 @RestController
 @RequestMapping("/incidents")
-class IncidentController(private val service: IncidentService) {
+class IncidentController(
+    private val service: IncidentService,
+    private val photoPreviewEncoder: PhotoPreviewEncoder,
+) {
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): IncidentResponse = service.get(id).toResponse()
 
@@ -85,7 +93,23 @@ class IncidentController(private val service: IncidentService) {
     fun list(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
-    ): IncidentPageResponse = service.list(page, size).toResponse()
+    ): IncidentPageResponse {
+        val result = service.list(page, size)
+        return IncidentPageResponse(
+            result.items.map { incident ->
+                IncidentListItemResponse(
+                    incident.id,
+                    incident.title,
+                    incident.location,
+                    incident.description,
+                    incident.photoUris.map(photoPreviewEncoder::encode),
+                )
+            },
+            result.page,
+            result.size,
+            result.hasNext,
+        )
+    }
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @ResponseStatus(HttpStatus.CREATED)

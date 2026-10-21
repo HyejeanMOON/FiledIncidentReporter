@@ -21,6 +21,11 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.annotation.Propagation
 import java.nio.file.Files
 import java.nio.file.Path
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.util.Base64
+import javax.imageio.ImageIO
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -101,7 +106,7 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
-    fun `list returns bounded pages with photo URIs`() {
+    fun `list returns bounded pages with photos`() {
         repeat(3) { index ->
             create("Incident $index").andExpect(status().isCreated)
         }
@@ -114,9 +119,36 @@ class IncidentApiTests @Autowired constructor(
         mvc.perform(get("/incidents?page=1&size=2"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
-            .andExpect(jsonPath("$.items[0].photoUris.length()").value(1))
+            .andExpect(jsonPath("$.items[0].photos.length()").value(1))
             .andExpect(jsonPath("$.hasNext").value(false))
-        assertTrue(first.contains("/photos/"))
+        assertTrue(first.contains("data:image/jpeg;base64,"))
+    }
+
+    @Test
+    fun `list includes resized compressed photo data`() {
+        val image = BufferedImage(1200, 800, BufferedImage.TYPE_INT_RGB)
+        val graphics = image.createGraphics()
+        graphics.color = Color.RED
+        graphics.fillRect(0, 0, image.width, image.height)
+        graphics.dispose()
+        val original = ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray()
+        val metadata = MockMultipartFile(
+            "incident", "", MediaType.APPLICATION_JSON_VALUE,
+            """{"title":"Image","location":"Plant","description":"Details"}""".toByteArray(),
+        )
+        mvc.perform(multipart("/incidents").file(metadata).file(MockMultipartFile("photos", "image.png", "image/png", original)))
+            .andExpect(status().isCreated)
+
+        val response = mvc.perform(get("/incidents"))
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val dataUri = JsonPath.read<String>(response, "$.items[0].photos[0]")
+        assertTrue(dataUri.startsWith("data:image/jpeg;base64,"))
+        val compressed = Base64.getDecoder().decode(dataUri.substringAfter(','))
+        assertTrue(compressed.size < original.size)
+        val preview = ImageIO.read(compressed.inputStream())
+        assertEquals(512, preview.width)
+        assertEquals(341, preview.height)
     }
 
     @Test
