@@ -120,6 +120,16 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
+    fun `stored photo can be downloaded`() {
+        val created = create("Photo test").andReturn().response.contentAsString
+        val uri = JsonPath.read<String>(created, "$.photoUris[0]")
+        mvc.perform(get(uri))
+            .andExpect(status().isOk)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes("one".toByteArray()))
+        mvc.perform(get("/photos/missing.jpg")).andExpect(status().isNotFound)
+    }
+
+    @Test
     fun `invalid incident is rejected`() {
         create(" ").andExpect(status().isBadRequest)
     }

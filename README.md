@@ -19,6 +19,8 @@ The server listens on `http://localhost:8080` by default.
 
 `POST /incidents` accepts `multipart/form-data` with an `incident` JSON part (`title`, `location`, `description`) and 1 to 20 `photos` file parts. Each photo must be an image of at most 10 MB. The response contains a generated string ID and server photo paths (`201 Created`). Invalid fields return `400 Bad Request`.
 
+`GET /photos/{filename}` streams a stored photo. Incident responses contain these relative paths so clients can resolve them against the API base URL.
+
 `GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first.
 
 `PUT /incidents/{id}` replaces an incident and its photo URI list. The body includes the same fields as POST plus an `id` matching the path. A missing ID returns `404 Not Found`.

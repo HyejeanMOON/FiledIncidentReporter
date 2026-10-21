@@ -3,6 +3,7 @@ package com.example.incidentreporter.incident.persistence
 import com.example.incidentreporter.incident.domain.IncomingPhoto
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
 import com.example.incidentreporter.incident.domain.PhotoStore
+import com.example.incidentreporter.incident.domain.StoredPhoto
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.nio.file.Files
@@ -12,6 +13,7 @@ import java.util.UUID
 @Component
 class LocalPhotoStore(@Value("\${incident.photos.directory}") directory: String) : PhotoStore {
     private val root = Path.of(directory).toAbsolutePath().normalize()
+    private val filenamePattern = Regex("[0-9a-f-]{36}\\.(jpg|png|webp|heic|gif)")
 
     override fun save(photo: IncomingPhoto): String {
         val extension = when (photo.contentType?.lowercase()) {
@@ -37,9 +39,27 @@ class LocalPhotoStore(@Value("\${incident.photos.directory}") directory: String)
     }
 
     override fun delete(uri: String) {
-        val filename = uri.removePrefix("/photos/")
-        if (uri.startsWith("/photos/") && filename.matches(Regex("[0-9a-f-]{36}\\.(jpg|png|webp|heic|gif)"))) {
-            Files.deleteIfExists(root.resolve(filename))
+        val path = resolve(uri) ?: return
+        Files.deleteIfExists(path)
+    }
+
+    override fun load(uri: String): StoredPhoto? {
+        val path = resolve(uri) ?: return null
+        if (!Files.isRegularFile(path)) return null
+        val contentType = when (path.fileName.toString().substringAfterLast('.')) {
+            "jpg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "heic" -> "image/heic"
+            "gif" -> "image/gif"
+            else -> return null
         }
+        return StoredPhoto(contentType, Files.size(path)) { Files.newInputStream(path) }
+    }
+
+    private fun resolve(uri: String): Path? {
+        if (!uri.startsWith("/photos/")) return null
+        val filename = uri.removePrefix("/photos/")
+        return if (filename.matches(filenamePattern)) root.resolve(filename) else null
     }
 }

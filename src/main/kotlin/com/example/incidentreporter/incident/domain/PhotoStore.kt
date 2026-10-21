@@ -11,4 +11,11 @@ data class IncomingPhoto(
 interface PhotoStore {
     fun save(photo: IncomingPhoto): String
     fun delete(uri: String)
+    fun load(uri: String): StoredPhoto?
 }
+
+data class StoredPhoto(
+    val contentType: String,
+    val size: Long,
+    val openStream: () -> InputStream,
+)
