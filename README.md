@@ -23,6 +23,8 @@ The server listens on `http://localhost:8080` by default.
 
 `GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first.
 
+`GET /incidents/{id}` returns one incident, including its photo paths. A missing ID returns `404 Not Found`.
+
 `PUT /incidents/{id}` accepts `multipart/form-data` with an `incident` JSON part (`id`, `title`, `location`, `description`, `retainedPhotoUris`) and optional new `photos` file parts. The `id` must match the path. Existing photos omitted from `retainedPhotoUris` are removed. A missing ID returns `404 Not Found`.
 
 `DELETE /incidents/{id}` removes an incident and its stored photo files, then returns `204 No Content`. A missing ID returns `404 Not Found`.

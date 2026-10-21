@@ -60,6 +60,9 @@ fun IncidentPage.toResponse() = IncidentPageResponse(items.map { it.toResponse()
 @RestController
 @RequestMapping("/incidents")
 class IncidentController(private val service: IncidentService) {
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: String): IncidentResponse = service.get(id).toResponse()
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: String) = service.delete(id)

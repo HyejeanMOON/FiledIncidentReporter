@@ -19,6 +19,9 @@ class IncidentService(
     private val repository: IncidentRepository,
     private val photoStore: PhotoStore,
 ) {
+    @Transactional(readOnly = true)
+    fun get(id: String): Incident = repository.findById(id) ?: throw IncidentNotFoundException()
+
     @Transactional
     fun delete(id: String) {
         val incident = repository.findById(id) ?: throw IncidentNotFoundException()

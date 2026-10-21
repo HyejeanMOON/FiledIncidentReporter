@@ -30,6 +30,19 @@ class IncidentApiTests @Autowired constructor(
     private val jdbc: JdbcClient,
 ) {
     @Test
+    fun `get incident by id includes its photos`() {
+        val created = create("Find me").andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
+
+        mvc.perform(get("/incidents/$id"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.title").value("Find me"))
+            .andExpect(jsonPath("$.photoUris[0]").value(photoUri))
+        mvc.perform(get("/incidents/missing")).andExpect(status().isNotFound)
+    }
+
+    @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun `delete removes incident and photos`() {
         val created = create("Old").andReturn().response.contentAsString
