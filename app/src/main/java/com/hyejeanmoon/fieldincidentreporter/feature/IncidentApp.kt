@@ -8,13 +8,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,10 +18,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.hyejeanmoon.fieldincidentreporter.R
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
+import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.common.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailRoute
-import com.hyejeanmoon.fieldincidentreporter.feature.detail.LoadingIncidentScreen
-import com.hyejeanmoon.fieldincidentreporter.feature.detail.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.form.IncidentFormRoute
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListViewModel
@@ -60,14 +56,7 @@ fun IncidentApp() {
 
     val listError = if (currentEntry?.destination?.route == IncidentDestinations.Report) null else listState.error
     listError?.let { error ->
-        AlertDialog(
-            onDismissRequest = listViewModel::clearError,
-            title = { Text(stringResource(R.string.error_title)) },
-            text = { Text(stringResource(error.messageResId())) },
-            confirmButton = {
-                TextButton(onClick = listViewModel::clearError) { Text(stringResource(R.string.ok)) }
-            },
-        )
+        IncidentErrorDialog(failure = error, onDismiss = listViewModel::clearError)
     }
 
     NavHost(

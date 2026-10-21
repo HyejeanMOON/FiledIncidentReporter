@@ -26,6 +26,7 @@ internal object IncidentListUiStateReducer {
             } else {
                 listOf(change.incident) + previous.incidents
             },
+            error = null,
         )
         is IncidentListStateChange.Deleted -> previous.copy(
             incidents = previous.incidents.filterNot { it.id == change.incidentId },

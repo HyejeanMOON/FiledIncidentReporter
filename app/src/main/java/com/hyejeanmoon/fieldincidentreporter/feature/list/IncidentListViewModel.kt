@@ -19,41 +19,31 @@ class IncidentListViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentListUiState())
     val uiState = _uiState.asStateFlow()
-    private var localRevision = 0L
 
     init { refresh() }
 
     fun refresh() {
         if (_uiState.value.isLoading) return
-        val startingRevision = localRevision
         reduce(IncidentListStateChange.RefreshStarted)
         viewModelScope.launch {
-            var needsRefresh = false
             try {
                 val incidents = getIncidents()
-                if (startingRevision == localRevision) {
-                    reduce(IncidentListStateChange.IncidentsLoaded(incidents))
-                } else {
-                    needsRefresh = true
-                }
+                reduce(IncidentListStateChange.IncidentsLoaded(incidents))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 reduce(IncidentListStateChange.RefreshFailed(error.toIncidentFailure()))
             } finally {
                 reduce(IncidentListStateChange.RefreshFinished)
-                if (needsRefresh) refresh()
             }
         }
     }
 
     fun onIncidentSaved(incident: Incident) {
-        localRevision++
         reduce(IncidentListStateChange.IncidentSaved(incident))
     }
 
     fun onIncidentDeleted(originEntryId: String, id: String) {
-        localRevision++
         reduce(IncidentListStateChange.Deleted(id, originEntryId))
     }
 

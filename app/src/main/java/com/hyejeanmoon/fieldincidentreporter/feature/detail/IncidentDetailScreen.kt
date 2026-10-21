@@ -57,7 +57,7 @@ fun IncidentDetailScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.incident_details_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !uiState.isDeleting) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),

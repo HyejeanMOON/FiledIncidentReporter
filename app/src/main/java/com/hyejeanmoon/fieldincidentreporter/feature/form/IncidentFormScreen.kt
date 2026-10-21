@@ -62,7 +62,7 @@ fun IncidentFormScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !uiState.isSaving) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
@@ -215,6 +215,7 @@ fun IncidentFormScreen(
             TextButton(
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isSaving,
             ) {
                 Text(stringResource(R.string.cancel))
             }

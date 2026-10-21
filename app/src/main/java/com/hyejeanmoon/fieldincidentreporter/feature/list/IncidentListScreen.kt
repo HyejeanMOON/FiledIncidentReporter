@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,12 +39,17 @@ fun IncidentListScreen(
     onReportIncident: () -> Unit,
     onIncidentClick: (Incident) -> Unit,
 ) {
+    if (isLoading) {
+        LoadingIncidentScreen(message = stringResource(R.string.loading_incidents))
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    TextButton(onClick = onRefresh, enabled = !isLoading) {
+                    TextButton(onClick = onRefresh) {
                         Text(stringResource(R.string.refresh))
                     }
                 },
@@ -56,16 +61,7 @@ fun IncidentListScreen(
             }
         },
     ) { contentPadding ->
-        if (isLoading && incidents.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.loading_incidents), modifier = Modifier.padding(top = 12.dp))
-            }
-        } else if (incidents.isEmpty()) {
+        if (incidents.isEmpty()) {
             EmptyIncidentList(
                 modifier = Modifier
                     .fillMaxSize()

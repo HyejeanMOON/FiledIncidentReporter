@@ -1,18 +1,14 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.detail
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
-import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
 
 @Composable
 fun IncidentDetailRoute(
@@ -23,6 +19,7 @@ fun IncidentDetailRoute(
     viewModel: IncidentDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(enabled = uiState.isDeleting) { }
     val currentOnDeleted by rememberUpdatedState(onDeleted)
 
     LaunchedEffect(viewModel, incident) {
@@ -44,15 +41,8 @@ fun IncidentDetailRoute(
     )
 
     uiState.error?.let { error ->
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(IncidentDetailAction.ErrorDismissed) },
-            title = { Text(stringResource(R.string.error_title)) },
-            text = { Text(stringResource(error.messageResId())) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(IncidentDetailAction.ErrorDismissed) }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-        )
+        IncidentErrorDialog(failure = error, onDismiss = {
+            viewModel.onAction(IncidentDetailAction.ErrorDismissed)
+        })
     }
 }

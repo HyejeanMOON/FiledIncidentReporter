@@ -2,13 +2,11 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,12 +15,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
-import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
 import java.io.File
 import java.util.UUID
 
@@ -34,6 +30,7 @@ fun IncidentFormRoute(
     viewModel: IncidentFormViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(enabled = uiState.isSaving) { }
     val currentOnSaved by rememberUpdatedState(onSaved)
     val context = LocalContext.current
     val contentResolver = context.contentResolver
@@ -93,16 +90,7 @@ fun IncidentFormRoute(
     }
 
     uiState.error?.let { error ->
-        AlertDialog(
-            onDismissRequest = viewModel::clearError,
-            title = { Text(stringResource(R.string.error_title)) },
-            text = { Text(stringResource(error.messageResId())) },
-            confirmButton = {
-                TextButton(onClick = viewModel::clearError) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-        )
+        IncidentErrorDialog(failure = error, onDismiss = viewModel::clearError)
     }
 }
 

@@ -1,7 +1,6 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.detail
+package com.hyejeanmoon.fieldincidentreporter.feature.common
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,9 +22,16 @@ import androidx.compose.ui.unit.dp
 import com.hyejeanmoon.fieldincidentreporter.R
 
 @Composable
-fun LoadingIncidentScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+fun LoadingIncidentScreen(message: String? = null) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         CircularProgressIndicator()
+        message?.let {
+            Text(text = it, modifier = Modifier.padding(top = 12.dp))
+        }
     }
 }
 

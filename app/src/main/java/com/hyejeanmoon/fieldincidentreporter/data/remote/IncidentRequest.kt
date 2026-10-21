@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.data
+package com.hyejeanmoon.fieldincidentreporter.data.remote
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentRepositoryException
