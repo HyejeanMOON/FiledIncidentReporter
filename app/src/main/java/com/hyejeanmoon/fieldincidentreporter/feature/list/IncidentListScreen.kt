@@ -51,9 +51,7 @@ fun IncidentListScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onReportIncident,
-            ) {
+            ExtendedFloatingActionButton(onClick = onReportIncident) {
                 Text(stringResource(R.string.report_incident))
             }
         },
