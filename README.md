@@ -13,7 +13,11 @@ A server project built with Spring Boot, Kotlin, and Maven.
 mvn spring-boot:run
 ```
 
-The server listens on `http://localhost:8080` by default. This is an initial project scaffold; no business endpoints have been defined yet.
+The server listens on `http://localhost:8080` by default.
+
+## API
+
+`POST /incidents` creates an incident and returns it with a generated string ID (`201 Created`). The JSON body contains `title`, `location`, `description`, and a nonempty `photoUris` array. Invalid fields return `400 Bad Request`.
 
 Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts. The database file is ignored by Git.
 
