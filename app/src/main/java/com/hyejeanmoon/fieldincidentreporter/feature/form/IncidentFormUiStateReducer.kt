@@ -3,7 +3,6 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.model.missingRequiredFields
 
 internal sealed interface IncidentFormStateChange {
     data class Initialized(val incident: Incident?) : IncidentFormStateChange
@@ -13,13 +12,13 @@ internal sealed interface IncidentFormStateChange {
     data class PhotosSelected(val uris: List<String>) : IncidentFormStateChange
     data object PhotosRemoved : IncidentFormStateChange
     data class FieldFocusChanged(val field: RequiredIncidentField, val isFocused: Boolean) : IncidentFormStateChange
+    data class ValidationChanged(val missingFields: List<RequiredIncidentField>) : IncidentFormStateChange
     data object SaveStarted : IncidentFormStateChange
     data class SaveSucceeded(val incident: Incident) : IncidentFormStateChange
     data class SaveFailed(val failure: IncidentFailure) : IncidentFormStateChange
     data object SaveFinished : IncidentFormStateChange
     data object ErrorCleared : IncidentFormStateChange
     data class SavedAcknowledged(val incident: Incident) : IncidentFormStateChange
-    data object Restored : IncidentFormStateChange
 }
 
 internal object IncidentFormUiStateReducer {
@@ -31,7 +30,7 @@ internal object IncidentFormUiStateReducer {
             location = change.incident?.location.orEmpty(),
             description = change.incident?.description.orEmpty(),
             photoUris = change.incident?.photoUris.orEmpty(),
-        ).withMissingFields()
+        )
         is IncidentFormStateChange.TitleChanged -> previous.edit { copy(title = change.value) }
         is IncidentFormStateChange.LocationChanged -> previous.edit { copy(location = change.value) }
         is IncidentFormStateChange.DescriptionChanged -> previous.edit { copy(description = change.value) }
@@ -47,6 +46,7 @@ internal object IncidentFormUiStateReducer {
                 validatedFields = previous.validatedFields + change.field,
             )
         } else previous
+        is IncidentFormStateChange.ValidationChanged -> previous.copy(missingFields = change.missingFields)
         IncidentFormStateChange.SaveStarted -> if (previous.isSubmitEnabled) {
             previous.copy(isSaving = true, error = null)
         } else previous
@@ -60,16 +60,11 @@ internal object IncidentFormUiStateReducer {
         is IncidentFormStateChange.SavedAcknowledged -> if (previous.savedIncident == change.incident) {
             previous.copy(savedIncident = null)
         } else previous
-        IncidentFormStateChange.Restored -> previous.withMissingFields()
     }
 
     private fun IncidentFormUiState.canEdit(): Boolean =
         isInitialized && !isSaving && savedIncident == null
 
     private inline fun IncidentFormUiState.edit(change: IncidentFormUiState.() -> IncidentFormUiState): IncidentFormUiState =
-        if (canEdit()) change().withMissingFields() else this
-
-    private fun IncidentFormUiState.withMissingFields(): IncidentFormUiState = copy(
-        missingFields = missingRequiredFields(title, location, description, photoUris),
-    )
+        if (canEdit()) change() else this
 }

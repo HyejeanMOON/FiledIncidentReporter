@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.CreateIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.UpdateIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -28,33 +30,47 @@ private const val VALIDATED_FIELDS_KEY = "form_validated_fields"
 class IncidentFormViewModel @Inject constructor(
     private val createIncident: CreateIncidentUseCase,
     private val updateIncident: UpdateIncidentUseCase,
+    private val validateIncidentDraft: ValidateIncidentDraftUseCase,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(restoreFormState(savedStateHandle))
     val uiState = _uiState.asStateFlow()
 
+    init {
+        updateValidation()
+    }
+
     fun initialize(incident: Incident?) {
         reduce(IncidentFormStateChange.Initialized(incident), persistForm = true)
+        updateValidation()
     }
 
     fun onEvent(event: IncidentFormUiEvent) {
         when (event) {
-            is IncidentFormUiEvent.TitleChanged -> reduce(
-                IncidentFormStateChange.TitleChanged(event.value), persistForm = true,
-            )
-            is IncidentFormUiEvent.LocationChanged -> reduce(
-                IncidentFormStateChange.LocationChanged(event.value), persistForm = true,
-            )
-            is IncidentFormUiEvent.DescriptionChanged -> reduce(
-                IncidentFormStateChange.DescriptionChanged(event.value), persistForm = true,
-            )
-            is IncidentFormUiEvent.PhotosSelected -> reduce(
-                IncidentFormStateChange.PhotosSelected(event.uris), persistForm = true,
-            )
-            is IncidentFormUiEvent.PhotoCaptured -> reduce(
-                IncidentFormStateChange.PhotosSelected(listOf(event.uri)), persistForm = true,
-            )
-            IncidentFormUiEvent.PhotosRemoved -> reduce(IncidentFormStateChange.PhotosRemoved, persistForm = true)
+            is IncidentFormUiEvent.TitleChanged -> {
+                reduce(IncidentFormStateChange.TitleChanged(event.value), persistForm = true)
+                updateValidation()
+            }
+            is IncidentFormUiEvent.LocationChanged -> {
+                reduce(IncidentFormStateChange.LocationChanged(event.value), persistForm = true)
+                updateValidation()
+            }
+            is IncidentFormUiEvent.DescriptionChanged -> {
+                reduce(IncidentFormStateChange.DescriptionChanged(event.value), persistForm = true)
+                updateValidation()
+            }
+            is IncidentFormUiEvent.PhotosSelected -> {
+                reduce(IncidentFormStateChange.PhotosSelected(event.uris), persistForm = true)
+                updateValidation()
+            }
+            is IncidentFormUiEvent.PhotoCaptured -> {
+                reduce(IncidentFormStateChange.PhotosSelected(listOf(event.uri)), persistForm = true)
+                updateValidation()
+            }
+            IncidentFormUiEvent.PhotosRemoved -> {
+                reduce(IncidentFormStateChange.PhotosRemoved, persistForm = true)
+                updateValidation()
+            }
             is IncidentFormUiEvent.FieldFocusChanged -> {
                 val wasFocused = event.field in _uiState.value.focusedFields
                 if (event.isFocused || wasFocused) {
@@ -77,19 +93,14 @@ class IncidentFormViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val saved = if (request.incidentId == null) {
-                    createIncident(
-                        request.title.trim(),
-                        request.location.trim(),
-                        request.description.trim(),
-                        request.photoUris,
-                    )
+                    createIncident(request.toDraft())
                 } else {
                     updateIncident(
                         Incident(
                             request.incidentId,
-                            request.title.trim(),
-                            request.location.trim(),
-                            request.description.trim(),
+                            request.title,
+                            request.location,
+                            request.description,
                             request.photoUris,
                         ),
                     )
@@ -127,7 +138,18 @@ class IncidentFormViewModel @Inject constructor(
         savedStateHandle[PHOTOS_KEY] = ArrayList(state.photoUris)
         savedStateHandle[VALIDATED_FIELDS_KEY] = ArrayList(state.validatedFields.map { it.name })
     }
+
+    private fun updateValidation() {
+        val state = _uiState.value
+        val missingFields = validateIncidentDraft(
+            IncidentDraft(state.title, state.location, state.description, state.photoUris),
+        )
+        reduce(IncidentFormStateChange.ValidationChanged(missingFields))
+    }
 }
+
+private fun IncidentFormUiState.toDraft() =
+    IncidentDraft(title, location, description, photoUris)
 
 private fun restoreFormState(handle: SavedStateHandle): IncidentFormUiState = IncidentFormUiState(
     isInitialized = handle[INITIALIZED_KEY] ?: false,
@@ -140,4 +162,4 @@ private fun restoreFormState(handle: SavedStateHandle): IncidentFormUiState = In
         ?.mapNotNull { value -> RequiredIncidentField.entries.firstOrNull { it.name == value } }
         ?.toSet()
         .orEmpty(),
-).let { IncidentFormUiStateReducer.reduce(it, IncidentFormStateChange.Restored) }
+)
