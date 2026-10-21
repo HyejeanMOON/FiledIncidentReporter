@@ -17,7 +17,7 @@
     <string name="remove_photos">Remove all photos</string>
     <string name="photos_selected">%1$d photos selected</string>
     <string name="required_field_error">This field is required.</string>
-    <string name="required_photos_error">Add at least one photo.</string>
+    <string name="required_photos_error">Select 1 to 20 photos.</string>
     <string name="photo_count">%1$d photos attached</string>
     <string name="submit_incident">Submit incident</string>
     <string name="save_changes">Save changes</string>
@@ -28,11 +28,12 @@
     <string name="edit">Edit</string>
     <string name="delete_incident">Delete incident</string>
     <string name="delete_confirmation_title">Delete this incident?</string>
-    <string name="delete_confirmation_message">This permanently removes the incident from the local server.</string>
+    <string name="delete_confirmation_message">This permanently removes the incident and its photos from the server.</string>
     <string name="refresh">Refresh</string>
     <string name="loading_incidents">Loading reports…</string>
     <string name="error_title">Could not complete the request</string>
-    <string name="error_network">Cannot reach the local server. Check that json-server is running and the API address is correct.</string>
+    <string name="error_network">Cannot reach the server. Check that the Spring Boot service is running and the API address is correct.</string>
+    <string name="error_photo">Could not read a selected photo. Select it again and retry.</string>
     <string name="error_server">The server could not complete the request. Please try again.</string>
     <string name="error_not_found">This report no longer exists on the server. Refresh the list.</string>
     <string name="error_unknown">Something went wrong. Please try again.</string>

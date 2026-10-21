@@ -11,6 +11,7 @@ internal fun Throwable.toIncidentFailure(): IncidentFailure =
 @StringRes
 internal fun IncidentFailure.messageResId(): Int = when (this) {
     IncidentFailure.NETWORK -> R.string.error_network
+    IncidentFailure.PHOTO -> R.string.error_photo
     IncidentFailure.SERVER -> R.string.error_server
     IncidentFailure.NOT_FOUND -> R.string.error_not_found
     IncidentFailure.UNKNOWN -> R.string.error_unknown

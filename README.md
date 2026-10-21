@@ -1,36 +1,35 @@
 # Field Incident Reporter
 
-An Android-native prototype for reporting and managing facility maintenance incidents. It uses Jetpack Compose, Hilt-injected ViewModels, Retrofit, and a local json-server API.
+An Android-native app for reporting and managing facility maintenance incidents. It uses Jetpack Compose, Hilt-injected ViewModels, Retrofit, and a Spring Boot API.
 
-## Run the mock API
+## Run the backend
 
-Install Node.js 22.12 or later. From `mock-api/`, run:
+Start the separate `Filed Incident Reporter Server` Spring Boot project with:
 
 ```sh
-npm install
-npm start
+mvn spring-boot:run
 ```
 
-The server listens on port 3000 and persists reports in `mock-api/db.json`. The API contract is:
+The server listens on port 8080 and stores incidents in a local H2 database. The API contract is:
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| GET | `/incidents` | List reports |
-| POST | `/incidents` | Create a report |
-| PUT | `/incidents/{id}` | Replace a report |
+| GET | `/incidents?page=0&size=20` | List reports in pages |
+| POST | `/incidents` | Create a report with multipart photo files |
+| PUT | `/incidents/{id}` | Update a report and upload new photo files |
 | DELETE | `/incidents/{id}` | Remove a report |
 
-Each report has string `id`, `title`, `location`, `description`, and `photoUris` fields. The server generates the ID on POST. Photo URIs are local references; json-server stores their strings but does not upload image data, so another device cannot display those images.
+Each report has string `id`, `title`, `location`, `description`, and `photoUris` fields. The server generates the ID and stores uploaded image bytes. The response contains relative server photo paths.
 
 ## Run the Android app
 
-Open this folder in Android Studio and run the `app` configuration on an Android emulator (API 26 or later). The default API address is `http://10.0.2.2:3000/`, which routes from the Android emulator to the development machine. Start the mock API before opening the app.
+Open this folder in Android Studio and run the `app` configuration on an Android emulator (API 26 or later). The default API address is `http://10.0.2.2:8080/`, which routes from the Android emulator to the development machine. Start the Spring Boot service before opening the app.
 
-For a physical device on the same network, set `incidentApiBaseUrl` to the development machine's reachable LAN address (including a trailing slash), for example in your local `gradle.properties` or with `-PincidentApiBaseUrl=http://192.168.1.10:3000/`. The server binds to all interfaces so that a device can reach it; use a trusted local network.
+For a physical device on the same network, set `incidentApiBaseUrl` to the development machine's reachable LAN address (including a trailing slash), for example in your local `gradle.properties` or with `-PincidentApiBaseUrl=http://192.168.1.10:8080/`. The server binds to all interfaces so that a device can reach it; use a trusted local network.
 
 The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0, JDK 17, and Android SDK Platform 37. This checkout lacks Gradle wrapper launch scripts and the wrapper JAR; use a locally installed Gradle 9.6.0 or generate the wrapper with `gradle wrapper --gradle-version 9.6.0`.
 
-The app loads reports on launch, shows loading and request errors, and updates the list only after server writes succeed. The Refresh button reloads reports from the server.
+The app loads reports on launch, shows loading and request errors, and updates the list only after server writes succeed. Photos selected in the picker or taken with the camera are uploaded as files. The Refresh button reloads reports from the server.
 
 ## Code organization
 

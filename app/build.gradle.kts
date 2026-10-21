@@ -18,7 +18,7 @@ android {
         buildConfigField(
             "String",
             "INCIDENT_API_BASE_URL",
-            "\"${providers.gradleProperty("incidentApiBaseUrl").orElse("http://10.0.2.2:3000/").get()}\"",
+            "\"${providers.gradleProperty("incidentApiBaseUrl").orElse("http://10.0.2.2:8080/").get()}\"",
         )
     }
 

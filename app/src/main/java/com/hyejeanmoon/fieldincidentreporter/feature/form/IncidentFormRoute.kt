@@ -1,6 +1,7 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,9 +49,16 @@ fun IncidentFormRoute(
     }
 
     val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(),
+        contract = ActivityResultContracts.PickMultipleVisualMedia(20),
     ) { selectedUris ->
         if (selectedUris.isNotEmpty()) {
+            selectedUris.forEach { uri ->
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: SecurityException) {
+                    // Picker fallbacks may provide a temporary read grant only.
+                }
+            }
             viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(selectedUris.map { it.toString() }))
         } else {
             viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled)

@@ -9,6 +9,6 @@ class ValidateIncidentDraftUseCase @Inject constructor() {
         if (draft.title.isBlank()) add(RequiredIncidentField.TITLE)
         if (draft.location.isBlank()) add(RequiredIncidentField.LOCATION)
         if (draft.description.isBlank()) add(RequiredIncidentField.DESCRIPTION)
-        if (draft.photoUris.none { it.isNotBlank() }) add(RequiredIncidentField.PHOTOS)
+        if (draft.photoUris.size !in 1..20 || draft.photoUris.any { it.isBlank() }) add(RequiredIncidentField.PHOTOS)
     }
 }
