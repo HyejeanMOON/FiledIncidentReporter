@@ -17,7 +17,7 @@ The server listens on `http://localhost:8080` by default.
 
 ## API
 
-`POST /incidents` creates an incident and returns it with a generated string ID (`201 Created`). The JSON body contains `title`, `location`, `description`, and a nonempty `photoUris` array. Invalid fields return `400 Bad Request`.
+`POST /incidents` accepts `multipart/form-data` with an `incident` JSON part (`title`, `location`, `description`) and 1 to 20 `photos` file parts. Each photo must be an image of at most 10 MB. The response contains a generated string ID and server photo paths (`201 Created`). Invalid fields return `400 Bad Request`.
 
 `GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first.
 

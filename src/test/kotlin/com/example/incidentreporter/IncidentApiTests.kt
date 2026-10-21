@@ -2,13 +2,16 @@ package com.example.incidentreporter
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.mock.web.MockMultipartFile
+import org.springframework.test.web.servlet.ResultActions
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
@@ -16,6 +19,8 @@ import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
+import java.nio.file.Files
+import java.nio.file.Path
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -26,11 +31,7 @@ class IncidentApiTests @Autowired constructor(
 ) {
     @Test
     fun `delete removes incident and photos`() {
-        val created = mvc.perform(
-            post("/incidents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"Old","location":"Plant","description":"Details","photoUris":["content://old"]}"""),
-        ).andReturn().response.contentAsString
+        val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
 
         mvc.perform(delete("/incidents/$id")).andExpect(status().isNoContent)
@@ -45,11 +46,7 @@ class IncidentApiTests @Autowired constructor(
 
     @Test
     fun `update replaces incident fields and photos`() {
-        val created = mvc.perform(
-            post("/incidents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"Old","location":"Plant","description":"Old details","photoUris":["content://old"]}"""),
-        ).andReturn().response.contentAsString
+        val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
 
         mvc.perform(
@@ -81,11 +78,7 @@ class IncidentApiTests @Autowired constructor(
     @Test
     fun `list returns bounded pages with photo URIs`() {
         repeat(3) { index ->
-            mvc.perform(
-                post("/incidents")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"title":"Incident $index","location":"Plant","description":"Details","photoUris":["content://$index"]}"""),
-            ).andExpect(status().isCreated)
+            create("Incident $index").andExpect(status().isCreated)
         }
 
         val first = mvc.perform(get("/incidents?page=0&size=2"))
@@ -98,7 +91,7 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].photoUris.length()").value(1))
             .andExpect(jsonPath("$.hasNext").value(false))
-        assertEquals(true, first.contains("content://"))
+        assertTrue(first.contains("/photos/"))
     }
 
     @Test
@@ -108,28 +101,38 @@ class IncidentApiTests @Autowired constructor(
 
     @Test
     fun `create incident persists its fields and photo order`() {
-        mvc.perform(
-            post("/incidents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":"  Broken pump  ","location":"Plant","description":"No pressure","photoUris":["content://one","content://two"]}"""),
-        )
+        create("  Broken pump  ", listOf("one", "two"))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.title").value("Broken pump"))
-            .andExpect(jsonPath("$.photoUris[1]").value("content://two"))
+            .andExpect(jsonPath("$.photoUris.length()").value(2))
 
         val saved = jdbc.sql("SELECT title FROM incidents").query(String::class.java).single()
         assertEquals("Broken pump", saved)
         val photos = jdbc.sql("SELECT photo_uri FROM incident_photos ORDER BY position")
             .query(String::class.java).list()
-        assertEquals(listOf("content://one", "content://two"), photos)
+        assertEquals(2, photos.size)
+        photos.forEachIndexed { index, savedUri ->
+            val uri = requireNotNull(savedUri)
+            assertTrue(uri.startsWith("/photos/"))
+            val path = Path.of("target/test-photos").resolve(uri.removePrefix("/photos/"))
+            assertEquals(listOf("one", "two")[index], Files.readString(path))
+        }
     }
 
     @Test
     fun `invalid incident is rejected`() {
-        mvc.perform(
-            post("/incidents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"title":" ","location":"Plant","description":"No pressure","photoUris":["content://one"]}"""),
-        ).andExpect(status().isBadRequest)
+        create(" ").andExpect(status().isBadRequest)
+    }
+
+    private fun create(title: String, photos: List<String> = listOf("one")): ResultActions {
+        val metadata = MockMultipartFile(
+            "incident", "", MediaType.APPLICATION_JSON_VALUE,
+            """{"title":"$title","location":"Plant","description":"Details"}""".toByteArray(),
+        )
+        val request = multipart("/incidents").file(metadata)
+        photos.forEach { photo ->
+            request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
+        }
+        return mvc.perform(request)
     }
 }

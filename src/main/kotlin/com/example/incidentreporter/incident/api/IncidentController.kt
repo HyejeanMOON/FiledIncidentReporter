@@ -10,20 +10,23 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
+import com.example.incidentreporter.incident.domain.IncomingPhoto
 
 data class IncidentBody(
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String>,
 ) {
-    fun toInput() = IncidentInput(title, location, description, photoUris)
+    fun toInput() = IncidentInput(title, location, description, emptyList())
 }
 
 data class IncidentUpdateBody(
@@ -74,7 +77,13 @@ class IncidentController(private val service: IncidentService) {
         @RequestParam(defaultValue = "20") size: Int,
     ): IncidentPageResponse = service.list(page, size).toResponse()
 
-    @PostMapping
+    @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody body: IncidentBody): IncidentResponse = service.create(body.toInput()).toResponse()
+    fun create(
+        @RequestPart("incident") body: IncidentBody,
+        @RequestPart("photos") photos: List<MultipartFile>,
+    ): IncidentResponse = service.create(
+        body.toInput(),
+        photos.map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
+    ).toResponse()
 }

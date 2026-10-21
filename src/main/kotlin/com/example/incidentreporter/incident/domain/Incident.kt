@@ -14,7 +14,7 @@ data class IncidentInput(
     val description: String,
     val photoUris: List<String>,
 ) {
-    fun validated(): IncidentInput {
+    fun validated(requirePhotos: Boolean = true): IncidentInput {
         val normalized = copy(
             title = title.trim(),
             location = location.trim(),
@@ -29,7 +29,7 @@ data class IncidentInput(
         if (normalized.description.isEmpty() || normalized.description.length > 4000) {
             throw InvalidIncidentException("description must contain 1 to 4000 characters")
         }
-        if (photoUris.isEmpty() || photoUris.size > 20 || photoUris.any { it.isBlank() || it.length > 2048 }) {
+        if ((requirePhotos && photoUris.isEmpty()) || photoUris.size > 20 || photoUris.any { it.isBlank() || it.length > 2048 }) {
             throw InvalidIncidentException("photoUris must contain 1 to 20 non-blank values of at most 2048 characters")
         }
         return normalized
