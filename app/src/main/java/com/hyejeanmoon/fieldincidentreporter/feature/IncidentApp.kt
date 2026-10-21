@@ -2,6 +2,10 @@ package com.hyejeanmoon.fieldincidentreporter.feature
 
 import android.net.Uri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +37,8 @@ private object IncidentDestinations {
     fun detail(id: String) = "incident/${Uri.encode(id)}"
     fun edit(id: String) = "report?incidentId=${Uri.encode(id)}"
 }
+
+private const val ScreenTransitionDurationMillis = 320
 
 @Composable
 fun IncidentApp() {
@@ -77,7 +83,34 @@ fun IncidentApp() {
         )
     }
 
-    NavHost(navController = navController, startDestination = IncidentDestinations.List) {
+    NavHost(
+        navController = navController,
+        startDestination = IncidentDestinations.List,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+            )
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it },
+                animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+            )
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+            )
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(ScreenTransitionDurationMillis, easing = FastOutSlowInEasing),
+            )
+        },
+    ) {
         composable(IncidentDestinations.List) {
             IncidentListScreen(
                 incidents = listState.incidents,
