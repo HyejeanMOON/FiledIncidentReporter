@@ -55,6 +55,8 @@ fun IncidentFormRoute(
     ) { selectedUris ->
         if (selectedUris.isNotEmpty()) {
             viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(selectedUris.map { it.toString() }))
+        } else {
+            viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled)
         }
     }
     val camera = rememberLauncherForActivityResult(
@@ -66,6 +68,7 @@ fun IncidentFormRoute(
                 viewModel.onEvent(IncidentFormUiEvent.PhotoCaptured(photoUri.toString()))
             } else {
                 contentResolver.delete(photoUri, null, null)
+                viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled)
             }
             pendingPhotoUri = null
         }

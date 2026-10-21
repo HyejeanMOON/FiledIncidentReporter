@@ -67,6 +67,9 @@ class IncidentFormViewModel @Inject constructor(
                 reduce(IncidentFormStateChange.PhotosSelected(listOf(event.uri)), persistForm = true)
                 updateValidation()
             }
+            IncidentFormUiEvent.PhotoInputCancelled -> {
+                reduce(IncidentFormStateChange.PhotoInputCancelled, persistForm = true)
+            }
             IncidentFormUiEvent.PhotosRemoved -> {
                 reduce(IncidentFormStateChange.PhotosRemoved, persistForm = true)
                 updateValidation()
