@@ -15,6 +15,7 @@ The server listens on port 8080 and stores incidents in a local H2 database. The
 | Method | Route | Purpose |
 | --- | --- | --- |
 | GET | `/incidents?page=0&size=20` | List reports in pages |
+| GET | `/incidents/{id}` | Read one report for detail and edit screens |
 | POST | `/incidents` | Create a report with multipart photo files |
 | PUT | `/incidents/{id}` | Update a report and upload new photo files |
 | DELETE | `/incidents/{id}` | Remove a report |
@@ -29,7 +30,7 @@ For a physical device on the same network, set `incidentApiBaseUrl` to the devel
 
 The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0, JDK 17, and Android SDK Platform 37. This checkout lacks Gradle wrapper launch scripts and the wrapper JAR; use a locally installed Gradle 9.6.0 or generate the wrapper with `gradle wrapper --gradle-version 9.6.0`.
 
-The app loads reports on launch, shows loading and request errors, and updates the list only after server writes succeed. Photos selected in the picker or taken with the camera are uploaded as files. The Refresh button reloads reports from the server.
+The app loads reports in pages of 20 using Paging 3, shows loading and request errors, and refreshes the list only after server writes succeed. Photos selected in the picker or taken with the camera are uploaded as files. The Refresh button reloads reports from the server.
 
 ## Code organization
 

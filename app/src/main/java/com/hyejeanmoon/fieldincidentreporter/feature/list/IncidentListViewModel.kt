@@ -2,7 +2,9 @@ package com.hyejeanmoon.fieldincidentreporter.feature.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.cachedIn
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentsUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,25 +18,24 @@ import javax.inject.Inject
 @HiltViewModel
 class IncidentListViewModel @Inject constructor(
     private val getIncidents: GetIncidentsUseCase,
+    private val getIncident: GetIncidentUseCase,
 ) : ViewModel() {
+    val incidents = getIncidents().cachedIn(viewModelScope)
     private val _uiState = MutableStateFlow(IncidentListUiState())
     val uiState = _uiState.asStateFlow()
 
-    init { refresh() }
+    fun onIncidentSelected(incident: Incident) = reduce(IncidentListStateChange.IncidentSelected(incident))
 
-    fun refresh() {
-        if (_uiState.value.isLoading) return
-        reduce(IncidentListStateChange.RefreshStarted)
+    fun ensureIncident(id: String) {
+        if (_uiState.value.selectedIncident?.id == id || _uiState.value.loadingIncidentId == id) return
+        reduce(IncidentListStateChange.LookupStarted(id))
         viewModelScope.launch {
             try {
-                val incidents = getIncidents()
-                reduce(IncidentListStateChange.IncidentsLoaded(incidents))
+                reduce(IncidentListStateChange.LookupSucceeded(getIncident(id)))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                reduce(IncidentListStateChange.RefreshFailed(error.toIncidentFailure()))
-            } finally {
-                reduce(IncidentListStateChange.RefreshFinished)
+                reduce(IncidentListStateChange.LookupFailed(id, error.toIncidentFailure()))
             }
         }
     }
@@ -45,10 +46,6 @@ class IncidentListViewModel @Inject constructor(
 
     fun onIncidentDeleted(originEntryId: String, id: String) {
         reduce(IncidentListStateChange.Deleted(id, originEntryId))
-    }
-
-    fun clearError() {
-        reduce(IncidentListStateChange.ErrorCleared)
     }
 
     fun acknowledgeDeletion(entryId: String) {

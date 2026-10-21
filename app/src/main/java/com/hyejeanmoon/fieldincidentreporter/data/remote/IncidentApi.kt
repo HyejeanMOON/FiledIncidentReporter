@@ -2,6 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.data.remote
 
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentBody
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentDto
+import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentPageDto
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentUpdateBody
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -12,10 +13,14 @@ import retrofit2.http.Part
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 internal interface IncidentApi {
+    @GET("incidents/{id}")
+    suspend fun getIncident(@Path("id") id: String): IncidentDto
+
     @GET("incidents")
-    suspend fun getIncidents(): List<IncidentDto>
+    suspend fun getIncidents(@Query("page") page: Int, @Query("size") size: Int): IncidentPageDto
 
     @Multipart
     @POST("incidents")

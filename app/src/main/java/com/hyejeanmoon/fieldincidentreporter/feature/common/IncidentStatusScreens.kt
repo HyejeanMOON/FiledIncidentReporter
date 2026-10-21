@@ -37,7 +37,11 @@ fun LoadingIncidentScreen(message: String? = null) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MissingIncidentScreen(onBack: () -> Unit) {
+fun MissingIncidentScreen(
+    onBack: () -> Unit,
+    message: String? = null,
+    onRetry: (() -> Unit)? = null,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -61,7 +65,10 @@ fun MissingIncidentScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.incident_missing))
+            Text(message ?: stringResource(R.string.incident_missing))
+            onRetry?.let { retry ->
+                TextButton(onClick = retry) { Text(stringResource(R.string.retry)) }
+            }
             TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_list)) }
         }
     }

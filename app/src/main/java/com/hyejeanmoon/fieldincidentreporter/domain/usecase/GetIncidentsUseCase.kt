@@ -6,5 +6,5 @@ import javax.inject.Inject
 class GetIncidentsUseCase @Inject constructor(
     private val repository: IncidentRepository,
 ) {
-    suspend operator fun invoke() = repository.getIncidents()
+    operator fun invoke() = repository.getIncidents()
 }

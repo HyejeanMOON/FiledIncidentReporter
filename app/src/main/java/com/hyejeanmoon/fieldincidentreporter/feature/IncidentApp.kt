@@ -11,14 +11,15 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.common.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailRoute
@@ -41,8 +42,8 @@ private const val ScreenTransitionDurationMillis = 320
 fun IncidentApp() {
     val listViewModel: IncidentListViewModel = hiltViewModel()
     val listState by listViewModel.uiState.collectAsStateWithLifecycle()
+    val incidents = listViewModel.incidents.collectAsLazyPagingItems()
     val navController = rememberNavController()
-    val currentEntry by navController.currentBackStackEntryAsState()
 
     val deletedFromEntryId = listState.deletedFromEntryId
     LaunchedEffect(deletedFromEntryId, navController) {
@@ -52,11 +53,6 @@ fun IncidentApp() {
             }
             listViewModel.acknowledgeDeletion(deletedFromEntryId)
         }
-    }
-
-    val listError = if (currentEntry?.destination?.route == IncidentDestinations.Report) null else listState.error
-    listError?.let { error ->
-        IncidentErrorDialog(failure = error, onDismiss = listViewModel::clearError)
     }
 
     NavHost(
@@ -89,11 +85,10 @@ fun IncidentApp() {
     ) {
         composable(IncidentDestinations.List) {
             IncidentListScreen(
-                incidents = listState.incidents,
-                isLoading = listState.isLoading,
-                onRefresh = listViewModel::refresh,
+                incidents = incidents,
                 onReportIncident = { navController.navigate("report") },
                 onIncidentClick = { incident ->
+                    listViewModel.onIncidentSelected(incident)
                     navController.navigate(IncidentDestinations.detail(incident.id))
                 },
             )
@@ -103,11 +98,22 @@ fun IncidentApp() {
             arguments = listOf(navArgument("incidentId") { type = NavType.StringType }),
         ) { entry ->
             val id = entry.arguments?.getString("incidentId")
-            val incident = listState.incidents.firstOrNull { it.id == id }
-            if (incident == null && listState.isLoading) {
+            val incident = listState.selectedIncident?.takeIf { it.id == id }
+                ?: incidents.itemSnapshotList.items.firstOrNull { it.id == id }
+            LaunchedEffect(id, incident?.id) {
+                if (id != null && incident == null) listViewModel.ensureIncident(id)
+            }
+            val lookupFailure = listState.lookupFailure.takeIf { listState.failedIncidentId == id }
+            if (id != null && incident == null && lookupFailure == null) {
                 LoadingIncidentScreen()
             } else if (incident == null) {
-                MissingIncidentScreen(onBack = { navController.popBackStack() })
+                MissingIncidentScreen(
+                    onBack = { navController.popBackStack() },
+                    message = lookupFailure?.let { stringResource(it.messageResId()) },
+                    onRetry = if (lookupFailure != null && lookupFailure != IncidentFailure.NOT_FOUND && id != null) {
+                        { listViewModel.ensureIncident(id) }
+                    } else null,
+                )
             } else {
                 IncidentDetailRoute(
                     incident = incident,
@@ -115,6 +121,7 @@ fun IncidentApp() {
                     onEdit = { navController.navigate(IncidentDestinations.edit(incident.id)) },
                     onDeleted = { deletedId ->
                         listViewModel.onIncidentDeleted(entry.id, deletedId)
+                        incidents.refresh()
                     },
                 )
             }
@@ -154,17 +161,29 @@ fun IncidentApp() {
             },
         ) { entry ->
             val id = entry.arguments?.getString("incidentId")
-            val incident = listState.incidents.firstOrNull { it.id == id }
-            if (id != null && incident == null && listState.isLoading) {
+            val incident = listState.selectedIncident?.takeIf { it.id == id }
+                ?: incidents.itemSnapshotList.items.firstOrNull { it.id == id }
+            LaunchedEffect(id, incident?.id) {
+                if (id != null && incident == null) listViewModel.ensureIncident(id)
+            }
+            val lookupFailure = listState.lookupFailure.takeIf { listState.failedIncidentId == id }
+            if (id != null && incident == null && lookupFailure == null) {
                 LoadingIncidentScreen()
             } else if (id != null && incident == null) {
-                MissingIncidentScreen(onBack = { navController.popBackStack() })
+                MissingIncidentScreen(
+                    onBack = { navController.popBackStack() },
+                    message = lookupFailure?.let { stringResource(it.messageResId()) },
+                    onRetry = if (lookupFailure != null && lookupFailure != IncidentFailure.NOT_FOUND) {
+                        { listViewModel.ensureIncident(id) }
+                    } else null,
+                )
             } else {
                 IncidentFormRoute(
                     incident = incident,
                     onBack = { navController.popBackStack() },
                     onSaved = { savedIncident ->
                         listViewModel.onIncidentSaved(savedIncident)
+                        incidents.refresh()
                         if (navController.currentBackStackEntry?.id == entry.id) {
                             navController.popBackStack()
                         }

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,21 +25,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
+import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
+import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncidentListScreen(
-    incidents: List<Incident>,
-    isLoading: Boolean,
-    onRefresh: () -> Unit,
+    incidents: LazyPagingItems<Incident>,
     onReportIncident: () -> Unit,
     onIncidentClick: (Incident) -> Unit,
 ) {
-    if (isLoading) {
+    val refresh = incidents.loadState.refresh
+    if (refresh is LoadState.Loading && incidents.itemCount == 0) {
         LoadingIncidentScreen(message = stringResource(R.string.loading_incidents))
         return
     }
@@ -49,7 +56,7 @@ fun IncidentListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    TextButton(onClick = onRefresh) {
+                    TextButton(onClick = incidents::refresh) {
                         Text(stringResource(R.string.refresh))
                     }
                 },
@@ -61,7 +68,13 @@ fun IncidentListScreen(
             }
         },
     ) { contentPadding ->
-        if (incidents.isEmpty()) {
+        if (refresh is LoadState.Error && incidents.itemCount == 0) {
+            IncidentLoadError(
+                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                message = stringResource(refresh.error.toIncidentFailure().messageResId()),
+                onRetry = incidents::retry,
+            )
+        } else if (incidents.itemCount == 0 && refresh is LoadState.NotLoading) {
             EmptyIncidentList(
                 modifier = Modifier
                     .fillMaxSize()
@@ -87,10 +100,50 @@ fun IncidentListScreen(
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                items(incidents, key = { it.id }) { incident ->
-                    IncidentCard(incident = incident, onClick = { onIncidentClick(incident) })
+                if (refresh is LoadState.Error) {
+                    item {
+                        IncidentLoadError(
+                            message = stringResource(refresh.error.toIncidentFailure().messageResId()),
+                            onRetry = incidents::retry,
+                        )
+                    }
+                }
+                items(count = incidents.itemCount, key = incidents.itemKey { it.id }) { index ->
+                    incidents[index]?.let { incident ->
+                        IncidentCard(incident = incident, onClick = { onIncidentClick(incident) })
+                    }
+                }
+                when (val append = incidents.loadState.append) {
+                    is LoadState.Loading -> item {
+                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    }
+                    is LoadState.Error -> item {
+                        IncidentLoadError(
+                            message = stringResource(append.error.toIncidentFailure().messageResId()),
+                            onRetry = incidents::retry,
+                        )
+                    }
+                    else -> Unit
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IncidentLoadError(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(message, style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
+            Text(stringResource(R.string.retry))
         }
     }
 }
@@ -167,9 +220,7 @@ private val PreviewIncident = Incident(
 private fun IncidentListScreenPreview() {
     FieldIncidentReporterTheme {
         IncidentListScreen(
-            incidents = listOf(PreviewIncident),
-            isLoading = false,
-            onRefresh = {},
+            incidents = flowOf(PagingData.from(listOf(PreviewIncident))).collectAsLazyPagingItems(),
             onReportIncident = {},
             onIncidentClick = {},
         )
@@ -181,9 +232,7 @@ private fun IncidentListScreenPreview() {
 private fun EmptyIncidentListScreenPreview() {
     FieldIncidentReporterTheme {
         IncidentListScreen(
-            incidents = emptyList(),
-            isLoading = false,
-            onRefresh = {},
+            incidents = flowOf(PagingData.from(emptyList<Incident>())).collectAsLazyPagingItems(),
             onReportIncident = {},
             onIncidentClick = {},
         )
