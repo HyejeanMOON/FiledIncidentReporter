@@ -5,7 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.CreateIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.UpdateIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -25,7 +26,8 @@ private const val VALIDATED_FIELDS_KEY = "form_validated_fields"
 
 @HiltViewModel
 class IncidentFormViewModel @Inject constructor(
-    private val repository: IncidentRepository,
+    private val createIncident: CreateIncidentUseCase,
+    private val updateIncident: UpdateIncidentUseCase,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(restoreFormState(savedStateHandle))
@@ -48,6 +50,9 @@ class IncidentFormViewModel @Inject constructor(
             )
             is IncidentFormUiEvent.PhotosSelected -> reduce(
                 IncidentFormStateChange.PhotosSelected(event.uris), persistForm = true,
+            )
+            is IncidentFormUiEvent.PhotoCaptured -> reduce(
+                IncidentFormStateChange.PhotosSelected(listOf(event.uri)), persistForm = true,
             )
             IncidentFormUiEvent.PhotosRemoved -> reduce(IncidentFormStateChange.PhotosRemoved, persistForm = true)
             is IncidentFormUiEvent.FieldFocusChanged -> {
@@ -72,14 +77,14 @@ class IncidentFormViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val saved = if (request.incidentId == null) {
-                    repository.create(
+                    createIncident(
                         request.title.trim(),
                         request.location.trim(),
                         request.description.trim(),
                         request.photoUris,
                     )
                 } else {
-                    repository.update(
+                    updateIncident(
                         Incident(
                             request.incidentId,
                             request.title.trim(),

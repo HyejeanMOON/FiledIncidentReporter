@@ -3,6 +3,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,6 +42,7 @@ fun IncidentFormScreen(
     uiState: IncidentFormUiState,
     onBack: () -> Unit,
     onChoosePhotos: () -> Unit,
+    onTakePhoto: () -> Unit,
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
     val visibleMissingFields = uiState.missingFields.filter { it in uiState.validatedFields }
@@ -167,14 +169,27 @@ fun IncidentFormScreen(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                OutlinedButton(
-                    onClick = onChoosePhotos,
-                    modifier = Modifier.onFocusChanged { focusState ->
-                        onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
-                    },
-                    enabled = canEdit,
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(stringResource(R.string.choose_photos))
+                    OutlinedButton(
+                        onClick = onChoosePhotos,
+                        modifier = Modifier.onFocusChanged { focusState ->
+                            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
+                        },
+                        enabled = canEdit,
+                    ) {
+                        Text(stringResource(R.string.choose_photos))
+                    }
+                    OutlinedButton(
+                        onClick = onTakePhoto,
+                        modifier = Modifier.onFocusChanged { focusState ->
+                            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
+                        },
+                        enabled = canEdit,
+                    ) {
+                        Text(stringResource(R.string.take_photo))
+                    }
                 }
                 if (uiState.photoUris.isNotEmpty()) {
                     Text(
@@ -225,6 +240,7 @@ private fun NewIncidentFormScreenPreview() {
             ),
             onBack = {},
             onChoosePhotos = {},
+            onTakePhoto = {},
             onEvent = {},
         )
     }
@@ -241,6 +257,7 @@ private fun EditIncidentFormScreenPreview() {
             ),
             onBack = {},
             onChoosePhotos = {},
+            onTakePhoto = {},
             onEvent = {},
         )
     }

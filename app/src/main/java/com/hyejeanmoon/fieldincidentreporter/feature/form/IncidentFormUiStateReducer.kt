@@ -36,7 +36,7 @@ internal object IncidentFormUiStateReducer {
         is IncidentFormStateChange.LocationChanged -> previous.edit { copy(location = change.value) }
         is IncidentFormStateChange.DescriptionChanged -> previous.edit { copy(description = change.value) }
         is IncidentFormStateChange.PhotosSelected -> if (change.uris.isEmpty()) previous else {
-            previous.edit { copy(photoUris = change.uris) }
+            previous.edit { copy(photoUris = (photoUris + change.uris).distinct()) }
         }
         IncidentFormStateChange.PhotosRemoved -> previous.edit { copy(photoUris = emptyList()) }
         is IncidentFormStateChange.FieldFocusChanged -> if (change.isFocused) {

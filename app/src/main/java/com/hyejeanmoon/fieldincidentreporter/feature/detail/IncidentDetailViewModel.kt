@@ -3,7 +3,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -22,7 +22,7 @@ sealed interface IncidentDetailAction {
 
 @HiltViewModel
 class IncidentDetailViewModel @Inject constructor(
-    private val repository: IncidentRepository,
+    private val deleteIncident: DeleteIncidentUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
     val uiState = _uiState.asStateFlow()
@@ -44,7 +44,7 @@ class IncidentDetailViewModel @Inject constructor(
         reduce(IncidentDetailStateChange.DeleteStarted)
         viewModelScope.launch {
             try {
-                repository.delete(incident.id)
+                deleteIncident(incident.id)
                 reduce(IncidentDetailStateChange.DeleteSucceeded(incident.id))
             } catch (cancelled: CancellationException) {
                 throw cancelled

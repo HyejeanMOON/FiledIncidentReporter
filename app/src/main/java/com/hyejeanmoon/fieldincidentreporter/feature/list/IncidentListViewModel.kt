@@ -3,7 +3,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentsUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -14,7 +14,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class IncidentListViewModel @Inject constructor(private val repository: IncidentRepository) : ViewModel() {
+class IncidentListViewModel @Inject constructor(
+    private val getIncidents: GetIncidentsUseCase,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentListUiState())
     val uiState = _uiState.asStateFlow()
     private var localRevision = 0L
@@ -28,7 +30,7 @@ class IncidentListViewModel @Inject constructor(private val repository: Incident
         viewModelScope.launch {
             var needsRefresh = false
             try {
-                val incidents = repository.getIncidents()
+                val incidents = getIncidents()
                 if (startingRevision == localRevision) {
                     reduce(IncidentListStateChange.IncidentsLoaded(incidents))
                 } else {
