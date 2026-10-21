@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -23,6 +24,25 @@ class IncidentApiTests @Autowired constructor(
     private val mvc: MockMvc,
     private val jdbc: JdbcClient,
 ) {
+    @Test
+    fun `delete removes incident and photos`() {
+        val created = mvc.perform(
+            post("/incidents")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"title":"Old","location":"Plant","description":"Details","photoUris":["content://old"]}"""),
+        ).andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+
+        mvc.perform(delete("/incidents/$id")).andExpect(status().isNoContent)
+        val incidents = jdbc.sql("SELECT COUNT(*) FROM incidents WHERE id = :id")
+            .param("id", id).query(Int::class.java).single()
+        val photos = jdbc.sql("SELECT COUNT(*) FROM incident_photos WHERE incident_id = :id")
+            .param("id", id).query(Int::class.java).single()
+        assertEquals(0, incidents)
+        assertEquals(0, photos)
+        mvc.perform(delete("/incidents/$id")).andExpect(status().isNotFound)
+    }
+
     @Test
     fun `update replaces incident fields and photos`() {
         val created = mvc.perform(

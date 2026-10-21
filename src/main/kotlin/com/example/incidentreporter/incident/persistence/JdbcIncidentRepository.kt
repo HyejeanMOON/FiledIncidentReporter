@@ -8,6 +8,11 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
+    override fun delete(id: String): Boolean =
+        jdbc.sql("DELETE FROM incidents WHERE id = :id")
+            .param("id", id)
+            .update() > 0
+
     override fun update(incident: Incident): Boolean {
         val updated = jdbc.sql(
             "UPDATE incidents SET title = :title, location = :location, description = :description WHERE id = :id",

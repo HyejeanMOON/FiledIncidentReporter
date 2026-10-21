@@ -13,6 +13,11 @@ import java.util.UUID
 @Service
 class IncidentService(private val repository: IncidentRepository) {
     @Transactional
+    fun delete(id: String) {
+        if (!repository.delete(id)) throw IncidentNotFoundException()
+    }
+
+    @Transactional
     fun update(id: String, input: IncidentInput): Incident {
         val valid = input.validated()
         val incident = Incident(id, valid.title, valid.location, valid.description, valid.photoUris)

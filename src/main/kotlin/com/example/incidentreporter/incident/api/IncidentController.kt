@@ -6,6 +6,7 @@ import com.example.incidentreporter.incident.domain.IncidentInput
 import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.http.HttpStatus
@@ -57,6 +58,10 @@ fun IncidentPage.toResponse() = IncidentPageResponse(items.map { it.toResponse()
 @RestController
 @RequestMapping("/incidents")
 class IncidentController(private val service: IncidentService) {
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun delete(@PathVariable id: String) = service.delete(id)
+
     @PutMapping("/{id}")
     fun update(@PathVariable id: String, @RequestBody body: IncidentUpdateBody): IncidentResponse {
         if (id != body.id) throw InvalidIncidentException("Body id must match path id")
