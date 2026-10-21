@@ -3,10 +3,13 @@ package com.example.incidentreporter.incident.api
 import com.example.incidentreporter.incident.application.IncidentService
 import com.example.incidentreporter.incident.domain.Incident
 import com.example.incidentreporter.incident.domain.IncidentInput
+import com.example.incidentreporter.incident.domain.IncidentPage
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
@@ -29,9 +32,24 @@ data class IncidentResponse(
 
 fun Incident.toResponse() = IncidentResponse(id, title, location, description, photoUris)
 
+data class IncidentPageResponse(
+    val items: List<IncidentResponse>,
+    val page: Int,
+    val size: Int,
+    val hasNext: Boolean,
+)
+
+fun IncidentPage.toResponse() = IncidentPageResponse(items.map { it.toResponse() }, page, size, hasNext)
+
 @RestController
 @RequestMapping("/incidents")
 class IncidentController(private val service: IncidentService) {
+    @GetMapping
+    fun list(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): IncidentPageResponse = service.list(page, size).toResponse()
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody body: IncidentBody): IncidentResponse = service.create(body.toInput()).toResponse()

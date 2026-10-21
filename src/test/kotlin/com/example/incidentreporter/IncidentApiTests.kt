@@ -9,6 +9,7 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +21,34 @@ class IncidentApiTests @Autowired constructor(
     private val mvc: MockMvc,
     private val jdbc: JdbcClient,
 ) {
+    @Test
+    fun `list returns bounded pages with photo URIs`() {
+        repeat(3) { index ->
+            mvc.perform(
+                post("/incidents")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"title":"Incident $index","location":"Plant","description":"Details","photoUris":["content://$index"]}"""),
+            ).andExpect(status().isCreated)
+        }
+
+        val first = mvc.perform(get("/incidents?page=0&size=2"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(2))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andReturn().response.contentAsString
+        mvc.perform(get("/incidents?page=1&size=2"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].photoUris.length()").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+        assertEquals(true, first.contains("content://"))
+    }
+
+    @Test
+    fun `invalid page size is rejected`() {
+        mvc.perform(get("/incidents?page=0&size=101")).andExpect(status().isBadRequest)
+    }
+
     @Test
     fun `create incident persists its fields and photo order`() {
         mvc.perform(
