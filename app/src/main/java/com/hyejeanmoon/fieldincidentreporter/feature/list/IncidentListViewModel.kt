@@ -26,6 +26,8 @@ class IncidentListViewModel @Inject constructor(
 
     fun onIncidentSelected(incident: Incident) = reduce(IncidentListStateChange.IncidentSelected(incident))
 
+    fun dismissLookupError() = reduce(IncidentListStateChange.LookupErrorDismissed)
+
     fun ensureIncident(id: String) {
         if (_uiState.value.selectedIncident?.id == id || _uiState.value.loadingIncidentId == id) return
         reduce(IncidentListStateChange.LookupStarted(id))

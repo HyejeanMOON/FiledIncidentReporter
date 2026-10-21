@@ -8,5 +8,6 @@ data class IncidentListUiState(
     val loadingIncidentId: String? = null,
     val failedIncidentId: String? = null,
     val lookupFailure: IncidentFailure? = null,
+    val lookupDialogVisible: Boolean = false,
     val deletedFromEntryId: String? = null,
 )

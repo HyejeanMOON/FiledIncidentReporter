@@ -1,5 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.data.remote
 
+import com.google.gson.JsonParser
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentRepositoryException
 import retrofit2.HttpException
@@ -13,6 +14,29 @@ internal suspend fun <T> incidentRequest(block: suspend () -> T): T = try {
         error,
     )
 } catch (error: HttpException) {
-    val failure = if (error.code() == 404) IncidentFailure.NOT_FOUND else IncidentFailure.SERVER
-    throw IncidentRepositoryException(failure, error)
+    throw IncidentRepositoryException(error.toIncidentFailure(), error)
+}
+
+internal fun HttpException.toIncidentFailure(): IncidentFailure {
+    val code = runCatching {
+        response()?.errorBody()?.charStream()?.use { reader ->
+            JsonParser.parseReader(reader).takeIf { it.isJsonObject }
+                ?.asJsonObject?.get("code")?.takeIf { it.isJsonPrimitive }?.asString
+        }
+    }.getOrNull()
+    return failureForApiError(code, code())
+}
+
+internal fun failureForApiError(code: String?, status: Int): IncidentFailure = when (code) {
+    "INCIDENT_NOT_FOUND", "RESOURCE_NOT_FOUND" -> IncidentFailure.NOT_FOUND
+    "INVALID_INCIDENT" -> IncidentFailure.INVALID_INCIDENT
+    "INVALID_REQUEST" -> IncidentFailure.INVALID_REQUEST
+    "PAYLOAD_TOO_LARGE" -> IncidentFailure.PAYLOAD_TOO_LARGE
+    "INTERNAL_ERROR" -> IncidentFailure.SERVER
+    else -> when (status) {
+        400, 405, 415, 422 -> IncidentFailure.INVALID_REQUEST
+        404 -> IncidentFailure.NOT_FOUND
+        413 -> IncidentFailure.PAYLOAD_TOO_LARGE
+        else -> IncidentFailure.SERVER
+    }
 }

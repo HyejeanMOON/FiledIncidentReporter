@@ -18,6 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -31,7 +36,9 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.hyejeanmoon.fieldincidentreporter.R
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
@@ -46,6 +53,12 @@ fun IncidentListScreen(
     onIncidentClick: (Incident) -> Unit,
 ) {
     val refresh = incidents.loadState.refresh
+    val append = incidents.loadState.append
+    val loadError = (refresh as? LoadState.Error)?.error ?: (append as? LoadState.Error)?.error
+    var dialogFailure by remember { mutableStateOf<IncidentFailure?>(null) }
+    LaunchedEffect(loadError) {
+        dialogFailure = loadError?.toIncidentFailure()
+    }
     if (refresh is LoadState.Loading && incidents.itemCount == 0) {
         LoadingIncidentScreen(message = stringResource(R.string.loading_incidents))
         return
@@ -113,7 +126,7 @@ fun IncidentListScreen(
                         IncidentCard(incident = incident, onClick = { onIncidentClick(incident) })
                     }
                 }
-                when (val append = incidents.loadState.append) {
+                when (append) {
                     is LoadState.Loading -> item {
                         CircularProgressIndicator(modifier = Modifier.padding(16.dp))
                     }
@@ -127,6 +140,9 @@ fun IncidentListScreen(
                 }
             }
         }
+    }
+    dialogFailure?.let { failure ->
+        IncidentErrorDialog(failure = failure, onDismiss = { dialogFailure = null })
     }
 }
 

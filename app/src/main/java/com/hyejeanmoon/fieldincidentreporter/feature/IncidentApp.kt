@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.common.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailRoute
@@ -114,6 +115,9 @@ fun IncidentApp() {
                         { listViewModel.ensureIncident(id) }
                     } else null,
                 )
+                if (lookupFailure != null && listState.lookupDialogVisible) {
+                    IncidentErrorDialog(failure = lookupFailure, onDismiss = listViewModel::dismissLookupError)
+                }
             } else {
                 IncidentDetailRoute(
                     incident = incident,
@@ -177,6 +181,9 @@ fun IncidentApp() {
                         { listViewModel.ensureIncident(id) }
                     } else null,
                 )
+                if (lookupFailure != null && listState.lookupDialogVisible) {
+                    IncidentErrorDialog(failure = lookupFailure, onDismiss = listViewModel::dismissLookupError)
+                }
             } else {
                 IncidentFormRoute(
                     incident = incident,

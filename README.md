@@ -32,6 +32,8 @@ The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0, JDK 17, and Android 
 
 The app loads reports in pages of 20 using Paging 3, shows loading and request errors, and refreshes the list only after server writes succeed. Photos selected in the picker or taken with the camera are uploaded as files. The Refresh button reloads reports from the server.
 
+The API sends RFC 9457 Problem Details with a stable `code`. The data layer maps known codes to app failures, and the UI shows a localized error dialog for failed list loads, report lookups, saves, and deletes. A failed page retains its Retry control. Unknown or malformed error bodies fall back to the HTTP status.
+
 ## Code organization
 
 The top-level packages separate responsibilities: `domain/model`, `domain/repository`, and `domain/error` contain the app model, repository contract, and failure types; `data` contains API payloads, Retrofit endpoints, mappers, the repository implementation, and Hilt bindings in `data/di`; `feature` contains the UI. Within `feature`, `list` and `form` each have their own screen, Hilt ViewModel, state, and event; `detail` contains the detail screen. `IncidentReporterApplication` initializes Hilt, and `IncidentApp` coordinates navigation and passes a saved report from the form ViewModel to the list ViewModel.

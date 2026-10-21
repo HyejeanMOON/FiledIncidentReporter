@@ -35,6 +35,9 @@
     <string name="error_title">Could not complete the request</string>
     <string name="error_network">Cannot reach the server. Check that the Spring Boot service is running and the API address is correct.</string>
     <string name="error_photo">Could not read a selected photo. Select it again and retry.</string>
+    <string name="error_invalid_incident">The report does not meet the server requirements. Check its fields and photos, then try again.</string>
+    <string name="error_invalid_request">The server could not understand this request. Check that the app and server versions match.</string>
+    <string name="error_payload_too_large">A photo is too large to upload. Choose photos under 10 MB and try again.</string>
     <string name="error_server">The server could not complete the request. Please try again.</string>
     <string name="error_not_found">This report no longer exists on the server. Refresh the list.</string>
     <string name="error_unknown">Something went wrong. Please try again.</string>
