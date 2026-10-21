@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -34,9 +33,9 @@ data class IncidentUpdateBody(
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String>,
+    val retainedPhotoUris: List<String>,
 ) {
-    fun toInput() = IncidentInput(title, location, description, photoUris)
+    fun toInput() = IncidentInput(title, location, description, retainedPhotoUris)
 }
 
 data class IncidentResponse(
@@ -65,10 +64,18 @@ class IncidentController(private val service: IncidentService) {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: String) = service.delete(id)
 
-    @PutMapping("/{id}")
-    fun update(@PathVariable id: String, @RequestBody body: IncidentUpdateBody): IncidentResponse {
+    @PutMapping("/{id}", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun update(
+        @PathVariable id: String,
+        @RequestPart("incident") body: IncidentUpdateBody,
+        @RequestPart("photos", required = false) photos: List<MultipartFile>?,
+    ): IncidentResponse {
         if (id != body.id) throw InvalidIncidentException("Body id must match path id")
-        return service.update(id, body.toInput()).toResponse()
+        return service.update(
+            id,
+            body.toInput(),
+            photos.orEmpty().map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
+        ).toResponse()
     }
 
     @GetMapping

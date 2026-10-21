@@ -25,11 +25,32 @@ class IncidentService(
     }
 
     @Transactional
-    fun update(id: String, input: IncidentInput): Incident {
-        val valid = input.validated()
-        val incident = Incident(id, valid.title, valid.location, valid.description, valid.photoUris)
-        if (!repository.update(incident)) throw IncidentNotFoundException()
-        return incident
+    fun update(id: String, input: IncidentInput, photos: List<IncomingPhoto>): Incident {
+        val existing = repository.findById(id) ?: throw IncidentNotFoundException()
+        val valid = input.validated(requirePhotos = false)
+        val retained = valid.photoUris
+        if (retained.distinct().size != retained.size || !existing.photoUris.containsAll(retained)) {
+            throw InvalidIncidentException("retainedPhotoUris must belong to this incident and must not repeat")
+        }
+        if (retained.size + photos.size !in 1..20) throw InvalidIncidentException("An incident needs 1 to 20 photos")
+
+        val stored = mutableListOf<String>()
+        try {
+            photos.forEach { stored += photoStore.save(it) }
+            val incident = Incident(id, valid.title, valid.location, valid.description, retained + stored)
+            if (!repository.update(incident)) throw IncidentNotFoundException()
+            val removed = existing.photoUris - retained.toSet()
+            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                override fun afterCompletion(status: Int) {
+                    if (status == TransactionSynchronization.STATUS_COMMITTED) removed.forEach(photoStore::delete)
+                    else stored.forEach(photoStore::delete)
+                }
+            })
+            return incident
+        } catch (error: Exception) {
+            stored.forEach(photoStore::delete)
+            throw error
+        }
     }
 
     @Transactional(readOnly = true)

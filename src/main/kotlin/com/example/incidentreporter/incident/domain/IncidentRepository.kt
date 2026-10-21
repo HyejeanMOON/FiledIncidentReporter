@@ -5,6 +5,7 @@ interface IncidentRepository {
     fun findPage(page: Int, size: Int): IncidentPage
     fun update(incident: Incident): Boolean
     fun delete(id: String): Boolean
+    fun findById(id: String): Incident?
 }
 
 data class IncidentPage(

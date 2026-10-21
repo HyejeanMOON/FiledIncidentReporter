@@ -13,7 +13,6 @@ import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -49,30 +48,36 @@ class IncidentApiTests @Autowired constructor(
         val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
 
-        mvc.perform(
-            put("/incidents/$id")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"id":"$id","title":"New","location":"Shop","description":"New details","photoUris":["content://new"]}"""),
-        )
+        update(id, photos = listOf("new"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("New"))
-            .andExpect(jsonPath("$.photoUris[0]").value("content://new"))
+            .andExpect(jsonPath("$.photoUris.length()").value(1))
 
         val stored = jdbc.sql("SELECT title FROM incidents WHERE id = :id")
             .param("id", id).query(String::class.java).single()
         assertEquals("New", stored)
         val photos = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id")
             .param("id", id).query(String::class.java).list()
-        assertEquals(listOf("content://new"), photos)
+        assertEquals(1, photos.size)
+        assertTrue(requireNotNull(photos.single()).startsWith("/photos/"))
     }
 
     @Test
     fun `update rejects missing incident`() {
-        mvc.perform(
-            put("/incidents/missing")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"id":"missing","title":"New","location":"Shop","description":"Details","photoUris":["content://new"]}"""),
-        ).andExpect(status().isNotFound)
+        update("missing", photos = listOf("new")).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `update retains only photos owned by the incident`() {
+        val created = create("Old").andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
+
+        update(id, retained = listOf(photoUri))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.photoUris[0]").value(photoUri))
+        update(id, retained = listOf("/photos/00000000-0000-0000-0000-000000000000.jpg"))
+            .andExpect(status().isBadRequest)
     }
 
     @Test
@@ -140,6 +145,19 @@ class IncidentApiTests @Autowired constructor(
             """{"title":"$title","location":"Plant","description":"Details"}""".toByteArray(),
         )
         val request = multipart("/incidents").file(metadata)
+        photos.forEach { photo ->
+            request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
+        }
+        return mvc.perform(request)
+    }
+
+    private fun update(id: String, retained: List<String> = emptyList(), photos: List<String> = emptyList()): ResultActions {
+        val retainedJson = retained.joinToString(",", "[", "]") { "\"$it\"" }
+        val metadata = MockMultipartFile(
+            "incident", "", MediaType.APPLICATION_JSON_VALUE,
+            """{"id":"$id","title":"New","location":"Shop","description":"New details","retainedPhotoUris":$retainedJson}""".toByteArray(),
+        )
+        val request = multipart("/incidents/$id").file(metadata).with { it.apply { method = "PUT" } }
         photos.forEach { photo ->
             request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
         }

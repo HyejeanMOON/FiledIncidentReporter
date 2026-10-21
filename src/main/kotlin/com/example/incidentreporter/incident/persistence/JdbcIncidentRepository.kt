@@ -8,6 +8,22 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
+    override fun findById(id: String): Incident? {
+        val incident = jdbc.sql("SELECT id, title, location, description FROM incidents WHERE id = :id")
+            .param("id", id)
+            .query { rs, _ ->
+                Incident(rs.getString("id"), rs.getString("title"), rs.getString("location"), rs.getString("description"), emptyList())
+            }
+            .optional()
+            .orElse(null) ?: return null
+        val photos = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id ORDER BY position")
+            .param("id", id)
+            .query(String::class.java)
+            .list()
+            .map { requireNotNull(it) }
+        return incident.copy(photoUris = photos)
+    }
+
     override fun delete(id: String): Boolean =
         jdbc.sql("DELETE FROM incidents WHERE id = :id")
             .param("id", id)
