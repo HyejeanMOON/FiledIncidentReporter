@@ -31,7 +31,7 @@ class PhotoPreviewEncoder {
             graphics.color = Color.WHITE
             graphics.fillRect(0, 0, width, height)
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            graphics.drawImage(image, 0, 0, null)
+            graphics.drawImage(image, 0, 0, width, height, null)
         } finally {
             graphics.dispose()
         }

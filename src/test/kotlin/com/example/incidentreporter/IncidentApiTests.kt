@@ -236,10 +236,12 @@ class IncidentApiTests @Autowired constructor(
 
     @Test
     fun `thumbnail endpoint returns resized compressed photo data`() {
-        val image = BufferedImage(1200, 800, BufferedImage.TYPE_INT_RGB)
+        val image = BufferedImage(800, 1200, BufferedImage.TYPE_INT_RGB)
         val graphics = image.createGraphics()
         graphics.color = Color.RED
         graphics.fillRect(0, 0, image.width, image.height)
+        graphics.color = Color.BLUE
+        graphics.fillRect(0, image.height / 2, image.width, image.height / 2)
         graphics.dispose()
         val original = ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray()
         val metadata = MockMultipartFile(
@@ -257,8 +259,11 @@ class IncidentApiTests @Autowired constructor(
             .andReturn().response.contentAsByteArray
         assertTrue(compressed.size < original.size)
         val preview = ImageIO.read(compressed.inputStream())
-        assertEquals(512, preview.width)
-        assertEquals(341, preview.height)
+        assertEquals(341, preview.width)
+        assertEquals(512, preview.height)
+        // Both halves of a portrait photo must survive the resize.
+        assertTrue(Color(preview.getRGB(preview.width / 2, preview.height / 4)).red > 200)
+        assertTrue(Color(preview.getRGB(preview.width / 2, preview.height * 3 / 4)).blue > 200)
     }
 
     @Test
