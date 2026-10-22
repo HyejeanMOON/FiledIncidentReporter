@@ -5,5 +5,5 @@ data class Incident(
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String> = emptyList(),
+    val photos: List<IncidentPhoto> = emptyList(),
 )

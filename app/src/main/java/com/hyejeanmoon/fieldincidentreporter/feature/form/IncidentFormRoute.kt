@@ -18,14 +18,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
+import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.common.MissingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
+import androidx.compose.ui.res.stringResource
 import java.io.File
 import java.util.UUID
 
 @Composable
 fun IncidentFormRoute(
-    incident: Incident?,
+    incidentId: String?,
     onBack: () -> Unit,
     onSaved: (Incident) -> Unit,
     viewModel: IncidentFormViewModel = hiltViewModel(),
@@ -37,8 +42,8 @@ fun IncidentFormRoute(
     val contentResolver = context.contentResolver
     var pendingPhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
-    LaunchedEffect(viewModel, incident?.id) {
-        viewModel.initialize(incident)
+    LaunchedEffect(viewModel, incidentId) {
+        viewModel.initialize(incidentId)
     }
     val savedIncident = uiState.savedIncident
     LaunchedEffect(viewModel, savedIncident) {
@@ -70,7 +75,7 @@ fun IncidentFormRoute(
         val photoUri = pendingPhotoUri
         if (photoUri != null) {
             if (captured) {
-                viewModel.onEvent(IncidentFormUiEvent.PhotoCaptured(photoUri.toString()))
+                viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(listOf(photoUri.toString())))
             } else {
                 contentResolver.delete(photoUri, null, null)
                 viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled)
@@ -79,7 +84,7 @@ fun IncidentFormRoute(
         }
     }
 
-    if (uiState.isInitialized) {
+    if (uiState.isInitialized && uiState.incidentId == incidentId) {
         IncidentFormScreen(
             uiState = uiState,
             onBack = onBack,
@@ -95,6 +100,17 @@ fun IncidentFormRoute(
             },
             onEvent = viewModel::onEvent,
         )
+    } else if (incidentId != null && uiState.loadFailure != null) {
+        val failure = uiState.loadFailure
+        MissingIncidentScreen(
+            onBack = onBack,
+            message = failure?.let { stringResource(it.messageResId()) },
+            onRetry = if (failure != IncidentFailure.NOT_FOUND) {
+                { viewModel.initialize(incidentId) }
+            } else null,
+        )
+    } else {
+        LoadingIncidentScreen()
     }
 
     uiState.error?.let { error ->

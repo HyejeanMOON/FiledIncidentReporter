@@ -7,7 +7,6 @@ sealed interface IncidentFormUiEvent {
     data class LocationChanged(val value: String) : IncidentFormUiEvent
     data class DescriptionChanged(val value: String) : IncidentFormUiEvent
     data class PhotosSelected(val uris: List<String>) : IncidentFormUiEvent
-    data class PhotoCaptured(val uri: String) : IncidentFormUiEvent
     data object PhotoInputCancelled : IncidentFormUiEvent
     data object PhotosRemoved : IncidentFormUiEvent
     data class FieldFocusChanged(val field: RequiredIncidentField, val isFocused: Boolean) : IncidentFormUiEvent

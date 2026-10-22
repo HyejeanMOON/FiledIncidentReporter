@@ -9,9 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,10 +17,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
-import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
-import com.hyejeanmoon.fieldincidentreporter.feature.common.MissingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.IncidentDetailRoute
 import com.hyejeanmoon.fieldincidentreporter.feature.form.IncidentFormRoute
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListScreen
@@ -38,23 +32,13 @@ private object IncidentDestinations {
 }
 
 private const val ScreenTransitionDurationMillis = 320
+private const val DetailRefreshVersionKey = "detail_refresh_version"
 
 @Composable
 fun IncidentApp() {
     val listViewModel: IncidentListViewModel = hiltViewModel()
-    val listState by listViewModel.uiState.collectAsStateWithLifecycle()
     val incidents = listViewModel.incidents.collectAsLazyPagingItems()
     val navController = rememberNavController()
-
-    val deletedFromEntryId = listState.deletedFromEntryId
-    LaunchedEffect(deletedFromEntryId, navController) {
-        if (deletedFromEntryId != null) {
-            if (navController.currentBackStackEntry?.id == deletedFromEntryId) {
-                navController.popBackStack()
-            }
-            listViewModel.acknowledgeDeletion(deletedFromEntryId)
-        }
-    }
 
     NavHost(
         navController = navController,
@@ -89,7 +73,6 @@ fun IncidentApp() {
                 incidents = incidents,
                 onReportIncident = { navController.navigate("report") },
                 onIncidentClick = { incident ->
-                    listViewModel.onIncidentSelected(incident)
                     navController.navigate(IncidentDestinations.detail(incident.id))
                 },
             )
@@ -99,36 +82,19 @@ fun IncidentApp() {
             arguments = listOf(navArgument("incidentId") { type = NavType.StringType }),
         ) { entry ->
             val id = entry.arguments?.getString("incidentId")
-            val incident = listState.selectedIncident?.takeIf { it.id == id }
-                ?: incidents.itemSnapshotList.items.firstOrNull { it.id == id }
-            LaunchedEffect(id, incident?.id) {
-                if (id != null && incident == null) listViewModel.ensureIncident(id)
-            }
-            val lookupFailure = listState.lookupFailure.takeIf { listState.failedIncidentId == id }
-            if (id != null && incident == null && lookupFailure == null) {
-                LoadingIncidentScreen()
-            } else if (incident == null) {
-                MissingIncidentScreen(
-                    onBack = { navController.popBackStack() },
-                    message = lookupFailure?.let { stringResource(it.messageResId()) },
-                    onRetry = if (lookupFailure != null && lookupFailure != IncidentFailure.NOT_FOUND && id != null) {
-                        { listViewModel.ensureIncident(id) }
-                    } else null,
-                )
-                if (lookupFailure != null && listState.lookupDialogVisible) {
-                    IncidentErrorDialog(failure = lookupFailure, onDismiss = listViewModel::dismissLookupError)
-                }
-            } else {
-                IncidentDetailRoute(
-                    incident = incident,
-                    onBack = { navController.popBackStack() },
-                    onEdit = { navController.navigate(IncidentDestinations.edit(incident.id)) },
-                    onDeleted = { deletedId ->
-                        listViewModel.onIncidentDeleted(entry.id, deletedId)
-                        incidents.refresh()
-                    },
-                )
-            }
+            val refreshVersion by entry.savedStateHandle
+                .getStateFlow(DetailRefreshVersionKey, 0)
+                .collectAsStateWithLifecycle()
+            IncidentDetailRoute(
+                incidentId = id,
+                refreshVersion = refreshVersion,
+                onBack = { navController.popBackStack() },
+                onEdit = { if (id != null) navController.navigate(IncidentDestinations.edit(id)) },
+                onDeleted = {
+                    incidents.refresh()
+                    if (navController.currentBackStackEntry?.id == entry.id) navController.popBackStack()
+                },
+            )
         }
         composable(
             route = IncidentDestinations.Report,
@@ -165,38 +131,19 @@ fun IncidentApp() {
             },
         ) { entry ->
             val id = entry.arguments?.getString("incidentId")
-            val incident = listState.selectedIncident?.takeIf { it.id == id }
-                ?: incidents.itemSnapshotList.items.firstOrNull { it.id == id }
-            LaunchedEffect(id, incident?.id) {
-                if (id != null && incident == null) listViewModel.ensureIncident(id)
-            }
-            val lookupFailure = listState.lookupFailure.takeIf { listState.failedIncidentId == id }
-            if (id != null && incident == null && lookupFailure == null) {
-                LoadingIncidentScreen()
-            } else if (id != null && incident == null) {
-                MissingIncidentScreen(
-                    onBack = { navController.popBackStack() },
-                    message = lookupFailure?.let { stringResource(it.messageResId()) },
-                    onRetry = if (lookupFailure != null && lookupFailure != IncidentFailure.NOT_FOUND) {
-                        { listViewModel.ensureIncident(id) }
-                    } else null,
-                )
-                if (lookupFailure != null && listState.lookupDialogVisible) {
-                    IncidentErrorDialog(failure = lookupFailure, onDismiss = listViewModel::dismissLookupError)
-                }
-            } else {
-                IncidentFormRoute(
-                    incident = incident,
-                    onBack = { navController.popBackStack() },
-                    onSaved = { savedIncident ->
-                        listViewModel.onIncidentSaved(savedIncident)
-                        incidents.refresh()
-                        if (navController.currentBackStackEntry?.id == entry.id) {
-                            navController.popBackStack()
+            IncidentFormRoute(
+                incidentId = id,
+                onBack = { navController.popBackStack() },
+                onSaved = { savedIncident ->
+                    if (id != null && savedIncident.id == id) {
+                        navController.previousBackStackEntry?.savedStateHandle?.let { handle ->
+                            handle[DetailRefreshVersionKey] = (handle.get<Int>(DetailRefreshVersionKey) ?: 0) + 1
                         }
-                    },
-                )
-            }
+                    }
+                    incidents.refresh()
+                    if (navController.currentBackStackEntry?.id == entry.id) navController.popBackStack()
+                },
+            )
         }
     }
 }

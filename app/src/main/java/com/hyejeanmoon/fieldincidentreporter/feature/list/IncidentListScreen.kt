@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -25,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,8 +40,9 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentSummary
 import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentPhotoImage
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
@@ -48,9 +52,9 @@ import kotlinx.coroutines.flow.flowOf
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncidentListScreen(
-    incidents: LazyPagingItems<Incident>,
+    incidents: LazyPagingItems<IncidentSummary>,
     onReportIncident: () -> Unit,
-    onIncidentClick: (Incident) -> Unit,
+    onIncidentClick: (IncidentSummary) -> Unit,
 ) {
     val refresh = incidents.loadState.refresh
     val append = incidents.loadState.append
@@ -189,7 +193,7 @@ private fun EmptyIncidentList(modifier: Modifier = Modifier, onReportIncident: (
 }
 
 @Composable
-private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
+private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -214,9 +218,20 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (incident.photoUris.isNotEmpty()) {
+            val previews = incident.photoPreviews
+            if (previews.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(count = previews.size) { index ->
+                        IncidentPhotoImage(
+                            uri = previews[index],
+                            index = index,
+                            modifier = Modifier.size(96.dp),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
                 Text(
-                    text = stringResource(R.string.photo_count, incident.photoUris.size),
+                    text = stringResource(R.string.photo_count, previews.size),
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -224,11 +239,12 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
     }
 }
 
-private val PreviewIncident = Incident(
+private val PreviewIncident = IncidentSummary(
     id = "preview-hydraulic-press",
     title = "Hydraulic press is not responding",
     location = "Workshop · Bay 3",
     description = "The control panel does not respond when the machine is switched on.",
+    photoPreviews = emptyList(),
 )
 
 @Preview(name = "Incident list", showBackground = true)
@@ -248,7 +264,7 @@ private fun IncidentListScreenPreview() {
 private fun EmptyIncidentListScreenPreview() {
     FieldIncidentReporterTheme {
         IncidentListScreen(
-            incidents = flowOf(PagingData.from(emptyList<Incident>())).collectAsLazyPagingItems(),
+            incidents = flowOf(PagingData.from(emptyList<IncidentSummary>())).collectAsLazyPagingItems(),
             onReportIncident = {},
             onIncidentClick = {},
         )

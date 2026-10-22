@@ -2,7 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface IncidentDetailAction {
-    data class IncidentChanged(val incident: Incident) : IncidentDetailAction
     data object Delete : IncidentDetailAction
     data object ErrorDismissed : IncidentDetailAction
     data class DeleteAcknowledged(val incidentId: String) : IncidentDetailAction
@@ -23,13 +22,28 @@ sealed interface IncidentDetailAction {
 @HiltViewModel
 class IncidentDetailViewModel @Inject constructor(
     private val deleteIncident: DeleteIncidentUseCase,
+    private val getIncident: GetIncidentUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
     val uiState = _uiState.asStateFlow()
 
+    fun load(id: String, refresh: Boolean = false) {
+        val current = _uiState.value
+        if (current.loadingIncidentId == id || (!refresh && current.incident?.id == id)) return
+        reduce(IncidentDetailStateChange.LoadStarted(id))
+        viewModelScope.launch {
+            try {
+                reduce(IncidentDetailStateChange.LoadSucceeded(id, getIncident(id)))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                reduce(IncidentDetailStateChange.LoadFailed(id, error.toIncidentFailure()))
+            }
+        }
+    }
+
     fun onAction(action: IncidentDetailAction) {
         when (action) {
-            is IncidentDetailAction.IncidentChanged -> reduce(IncidentDetailStateChange.IncidentChanged(action.incident))
             IncidentDetailAction.Delete -> deleteIncident()
             IncidentDetailAction.ErrorDismissed -> reduce(IncidentDetailStateChange.ErrorCleared)
             is IncidentDetailAction.DeleteAcknowledged -> reduce(

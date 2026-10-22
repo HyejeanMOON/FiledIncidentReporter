@@ -2,6 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 
 data class IncidentFormUiState(
@@ -10,7 +11,9 @@ data class IncidentFormUiState(
     val title: String = "",
     val location: String = "",
     val description: String = "",
-    val photoUris: List<String> = emptyList(),
+    val photos: List<IncidentPhoto> = emptyList(),
+    val loadingIncidentId: String? = null,
+    val loadFailure: IncidentFailure? = null,
     val missingFields: List<RequiredIncidentField> = emptyList(),
     val focusedFields: Set<RequiredIncidentField> = emptySet(),
     val validatedFields: Set<RequiredIncidentField> = emptySet(),

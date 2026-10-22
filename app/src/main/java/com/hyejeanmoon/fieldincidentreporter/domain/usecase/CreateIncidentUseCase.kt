@@ -16,7 +16,7 @@ class CreateIncidentUseCase @Inject constructor(
             normalized.title,
             normalized.location,
             normalized.description,
-            normalized.photoUris,
+            normalized.photos,
         )
     }
 }

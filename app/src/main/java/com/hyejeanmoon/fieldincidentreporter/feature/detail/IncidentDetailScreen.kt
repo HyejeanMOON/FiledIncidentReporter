@@ -1,7 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.detail
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,17 +22,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,9 +44,7 @@ fun IncidentDetailScreen(
 ) {
     val incident = uiState.incident
     if (incident == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        LoadingIncidentScreen()
         return
     }
     var showDeleteConfirmation by rememberSaveable(incident.id) { mutableStateOf(false) }
@@ -89,8 +85,9 @@ fun IncidentDetailScreen(
             DetailField(label = stringResource(R.string.description_label), value = incident.description)
             DetailField(
                 label = stringResource(R.string.photos_label),
-                value = stringResource(R.string.photo_count, incident.photoUris.size),
+                value = stringResource(R.string.photo_count, incident.photos.size),
             )
+            IncidentPhotoGallery(photoUrls = incident.photos.map { it.displayUri })
             OutlinedButton(
                 onClick = { showDeleteConfirmation = true },
                 modifier = Modifier.fillMaxWidth(),

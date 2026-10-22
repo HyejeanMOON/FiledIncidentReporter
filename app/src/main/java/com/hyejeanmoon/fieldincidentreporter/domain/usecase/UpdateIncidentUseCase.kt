@@ -13,14 +13,14 @@ class UpdateIncidentUseCase @Inject constructor(
             title = incident.title,
             location = incident.location,
             description = incident.description,
-            photoUris = incident.photoUris,
+            photos = incident.photos,
         ).normalized()
         return repository.update(
             incident.copy(
                 title = normalized.title,
                 location = normalized.location,
                 description = normalized.description,
-                photoUris = normalized.photoUris,
+                photos = normalized.photos,
             ),
         )
     }
