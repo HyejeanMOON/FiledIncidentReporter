@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 import com.example.incidentreporter.incident.domain.IncomingPhoto
+import java.time.Instant
 
 data class IncidentBody(
     val title: String,
@@ -49,9 +50,11 @@ data class IncidentResponse(
     val location: String,
     val description: String,
     val photos: List<PhotoResponse>,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )
 
-fun Incident.toResponse() = IncidentResponse(id, title, location, description, photos.map { it.toResponse(id) })
+fun Incident.toResponse() = IncidentResponse(id, title, location, description, photos.map { it.toResponse(id) }, createdAt, updatedAt)
 
 data class IncidentPageResponse(
     val items: List<IncidentListItemResponse>,
@@ -66,6 +69,8 @@ data class IncidentListItemResponse(
     val location: String,
     val description: String,
     val photos: List<PhotoResponse>,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )
 
 @RestController
@@ -104,6 +109,8 @@ class IncidentController(private val service: IncidentService) {
                     incident.location,
                     incident.description,
                     incident.photos.map { it.toResponse(incident.id) },
+                    incident.createdAt,
+                    incident.updatedAt,
                 )
             },
             result.page,

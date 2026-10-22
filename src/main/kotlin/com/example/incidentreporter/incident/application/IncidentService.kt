@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -57,7 +58,11 @@ class IncidentService(
         val stored = mutableListOf<IncidentPhoto>()
         try {
             photos.forEach { stored += IncidentPhoto(UUID.randomUUID().toString(), photoStore.save(it)) }
-            val incident = Incident(id, valid.title, valid.location, valid.description, retained + stored)
+            val now = Instant.now()
+            val incident = Incident(
+                id, valid.title, valid.location, valid.description, retained + stored,
+                existing.createdAt, now,
+            )
             if (!repository.update(incident)) throw IncidentNotFoundException()
             val removed = existing.photos.filter { it.id in deletedIds }
             TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
@@ -88,12 +93,15 @@ class IncidentService(
         val stored = mutableListOf<IncidentPhoto>()
         try {
             photos.forEach { stored += IncidentPhoto(UUID.randomUUID().toString(), photoStore.save(it)) }
+            val now = Instant.now()
             val incident = Incident(
                 id = UUID.randomUUID().toString(),
                 title = valid.title,
                 location = valid.location,
                 description = valid.description,
                 photos = stored.toList(),
+                createdAt = now,
+                updatedAt = now,
             )
             repository.insert(incident)
             TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {

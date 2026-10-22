@@ -1,5 +1,7 @@
 package com.example.incidentreporter.incident.domain
 
+import java.time.Instant
+
 data class IncidentPhoto(val id: String, val uri: String)
 
 data class Incident(
@@ -8,6 +10,8 @@ data class Incident(
     val location: String,
     val description: String,
     val photos: List<IncidentPhoto>,
+    val createdAt: Instant,
+    val updatedAt: Instant,
 )
 
 data class IncidentInput(

@@ -6,14 +6,21 @@ import com.example.incidentreporter.incident.domain.IncidentRepository
 import com.example.incidentreporter.incident.domain.IncidentPage
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
     override fun findById(id: String): Incident? {
-        val incident = jdbc.sql("SELECT id, title, location, description FROM incidents WHERE id = :id")
+        val incident = jdbc.sql("SELECT id, title, location, description, created_at, updated_at FROM incidents WHERE id = :id")
             .param("id", id)
             .query { rs, _ ->
-                Incident(rs.getString("id"), rs.getString("title"), rs.getString("location"), rs.getString("description"), emptyList())
+                Incident(
+                    rs.getString("id"), rs.getString("title"), rs.getString("location"), rs.getString("description"),
+                    emptyList(),
+                    rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+                    rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
+                )
             }
             .optional()
             .orElse(null) ?: return null
@@ -31,12 +38,13 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
 
     override fun update(incident: Incident): Boolean {
         val updated = jdbc.sql(
-            "UPDATE incidents SET title = :title, location = :location, description = :description WHERE id = :id",
+            "UPDATE incidents SET title = :title, location = :location, description = :description, updated_at = :updatedAt WHERE id = :id",
         )
             .param("id", incident.id)
             .param("title", incident.title)
             .param("location", incident.location)
             .param("description", incident.description)
+            .param("updatedAt", OffsetDateTime.ofInstant(incident.updatedAt, ZoneOffset.UTC))
             .update()
         if (updated == 0) return false
 
@@ -56,7 +64,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
 
     override fun findPage(page: Int, size: Int): IncidentPage {
         val rows = jdbc.sql(
-            "SELECT id, title, location, description FROM incidents " +
+            "SELECT id, title, location, description, created_at, updated_at FROM incidents " +
                 "ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset",
         )
             .param("limit", size + 1)
@@ -68,6 +76,8 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
                     location = rs.getString("location"),
                     description = rs.getString("description"),
                     photos = emptyList(),
+                    createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+                    updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
                 )
             }
             .list()
@@ -87,11 +97,13 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
     }
 
     override fun insert(incident: Incident) {
-        jdbc.sql("INSERT INTO incidents (id, title, location, description) VALUES (:id, :title, :location, :description)")
+        jdbc.sql("INSERT INTO incidents (id, title, location, description, created_at, updated_at) VALUES (:id, :title, :location, :description, :createdAt, :updatedAt)")
             .param("id", incident.id)
             .param("title", incident.title)
             .param("location", incident.location)
             .param("description", incident.description)
+            .param("createdAt", OffsetDateTime.ofInstant(incident.createdAt, ZoneOffset.UTC))
+            .param("updatedAt", OffsetDateTime.ofInstant(incident.updatedAt, ZoneOffset.UTC))
             .update()
 
         incident.photos.forEachIndexed { position, photo ->

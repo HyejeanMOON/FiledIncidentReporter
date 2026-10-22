@@ -19,11 +19,13 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.annotation.Propagation
-import java.nio.file.Files
-import java.nio.file.Path
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.nio.file.Files
+import java.nio.file.Path
+import java.time.Instant
+import java.time.OffsetDateTime
 import javax.imageio.ImageIO
 
 @SpringBootTest
@@ -71,15 +73,30 @@ class IncidentApiTests @Autowired constructor(
     fun `update replaces incident fields and photos`() {
         val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
+        val createdAt = Instant.parse(JsonPath.read(created, "$.createdAt"))
+        val initialUpdatedAt = Instant.parse(JsonPath.read(created, "$.updatedAt"))
+        assertEquals(createdAt, initialUpdatedAt)
 
-        update(id, photos = listOf("new"))
+        val updated = update(id, photos = listOf("new"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("New"))
             .andExpect(jsonPath("$.photos.length()").value(2))
+            .andReturn().response.contentAsString
+        val updatedAt = Instant.parse(JsonPath.read(updated, "$.updatedAt"))
+        assertEquals(createdAt, Instant.parse(JsonPath.read(updated, "$.createdAt")))
+        assertTrue(!updatedAt.isBefore(initialUpdatedAt))
 
-        val stored = jdbc.sql("SELECT title FROM incidents WHERE id = :id")
-            .param("id", id).query(String::class.java).single()
-        assertEquals("New", stored)
+        val stored = jdbc.sql("SELECT title, created_at, updated_at FROM incidents WHERE id = :id")
+            .param("id", id)
+            .query { rs, _ -> Triple(
+                rs.getString("title"),
+                rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+                rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
+            ) }
+            .single()
+        assertEquals("New", stored.first)
+        assertEquals(createdAt, stored.second)
+        assertEquals(updatedAt, stored.third)
         val photos = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id")
             .param("id", id).query(String::class.java).list()
         assertEquals(2, photos.size)
@@ -146,6 +163,8 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(2))
             .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.items[0].createdAt").exists())
+            .andExpect(jsonPath("$.items[0].updatedAt").exists())
             .andReturn().response.contentAsString
         mvc.perform(get("/incidents?page=1&size=2"))
             .andExpect(status().isOk)
@@ -191,10 +210,15 @@ class IncidentApiTests @Autowired constructor(
 
     @Test
     fun `create incident persists its fields and photo order`() {
-        create("  Broken pump  ", listOf("one", "two"))
+        val created = create("  Broken pump  ", listOf("one", "two"))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.title").value("Broken pump"))
             .andExpect(jsonPath("$.photos.length()").value(2))
+            .andReturn().response.contentAsString
+        assertEquals(
+            Instant.parse(JsonPath.read(created, "$.createdAt")),
+            Instant.parse(JsonPath.read(created, "$.updatedAt")),
+        )
 
         val saved = jdbc.sql("SELECT title FROM incidents").query(String::class.java).single()
         assertEquals("Broken pump", saved)

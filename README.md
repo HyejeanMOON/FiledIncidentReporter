@@ -24,6 +24,8 @@ Errors use RFC 9457 Problem Details (`application/problem+json`). The `code` fie
 
 `POST /incidents` accepts `multipart/form-data` with an `incident` JSON part (`title`, `location`, `description`) and 1 to 20 `photos` file parts. Each photo must be an image of at most 10 MB. The response contains a generated incident ID and photo objects (`201 Created`). Invalid fields return `400 Bad Request`.
 
+Incident responses, including list items, contain server-generated `createdAt` and `updatedAt` timestamps in ISO 8601 UTC. Both are equal when an incident is created. A successful update keeps `createdAt` and refreshes `updatedAt`. Clients cannot set either timestamp.
+
 Each photo object contains a stable `id`, a relative `url`, and a relative `thumbnailUrl`. `GET /incidents/{incidentId}/photos/{photoId}` streams the original file. `GET /incidents/{incidentId}/photos/{photoId}/thumbnail` returns a preview, resized to at most 512 pixels and JPEG encoded when the image can be decoded. Missing or unowned photo IDs return `404`.
 
 `GET /incidents?page=0&size=20` returns `{ "items": [...], "page": 0, "size": 20, "hasNext": false }`. Pages start at zero, and `size` must be between 1 and 100. Results are ordered newest first. Each item's `photos` array contains photo objects instead of embedded base64 data.
@@ -34,7 +36,7 @@ Each photo object contains a stable `id`, a relative `url`, and a relative `thum
 
 `DELETE /incidents/{id}` removes an incident and its stored photo files, then returns `204 No Content`. A missing ID returns `404 Not Found`.
 
-Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts, including photo IDs for existing records. The database file is ignored by Git.
+Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts, including photo IDs and an `updated_at` value initialized from `created_at` for existing records. The database file is ignored by Git.
 
 ## Test and package
 
