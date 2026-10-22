@@ -6,6 +6,7 @@ import type { Incident, IncidentPage, IncidentPhoto } from "@/lib/incidents";
 import { formatDate, photoPath } from "@/lib/incidents";
 
 type StatusFilter = "all" | "open" | "resolved";
+type SearchField = "all" | "title" | "location" | "description";
 type IconName = "grid" | "search" | "pin" | "clock" | "check" | "arrow" | "close" | "refresh" | "image" | "chevron" | "alert";
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -138,6 +139,7 @@ export function IncidentDashboard() {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [searchField, setSearchField] = useState<SearchField>("all");
   const [page, setPage] = useState(0);
   const [version, setVersion] = useState(0);
   const [data, setData] = useState<IncidentPage | null>(null);
@@ -149,6 +151,7 @@ export function IncidentDashboard() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const activeSearchField = query ? searchField : "all";
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setPage(0); setQuery(searchInput.trim()); }, 350);
@@ -159,12 +162,12 @@ export function IncidentDashboard() {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page) });
     if (query) params.set("q", query);
+    if (activeSearchField !== "all") params.set("field", activeSearchField);
     if (filter !== "all") params.set("resolved", filter === "resolved" ? "true" : "false");
     Promise.resolve().then(() => {
       if (controller.signal.aborted) return null;
       setLoading(true);
       setListError(null);
-      setData(null);
       return fetch(`/api/incidents?${params}`, { signal: controller.signal });
     })
       .then((response) => response && readJson<IncidentPage>(response))
@@ -172,7 +175,7 @@ export function IncidentDashboard() {
       .catch((error) => { if (!controller.signal.aborted) setListError(error instanceof Error ? error.message : "Unable to load data"); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [query, filter, page, version]);
+  }, [query, activeSearchField, filter, page, version]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -202,6 +205,7 @@ export function IncidentDashboard() {
   }, [selectedId]);
 
   const changeFilter = useCallback((next: StatusFilter) => { setFilter(next); setPage(0); }, []);
+  const changeSearchField = (next: SearchField) => { setSearchField(next); if (query) setPage(0); };
   const toggleResolution = async () => {
     if (!selected || saving) return;
     setSaving(true);
@@ -231,9 +235,9 @@ export function IncidentDashboard() {
       <header className="topbar"><div className="breadcrumb">Workspace <Icon name="chevron" size={13} /> <strong>Incident overview</strong></div><div className="topbar-right"><span className="live-dot" />Admin console</div></header>
       <div className="page-heading"><div><div className="eyebrow heading-eyebrow"><span /> INCIDENT MANAGEMENT</div><h1>Incident overview<span className="heading-period">.</span></h1><p>Stay on top of field reports and follow through on every incident.</p></div><button className="refresh-button" onClick={() => setVersion((value) => value + 1)}><Icon name="refresh" size={17} />Refresh</button></div>
       <section className="overview-grid" aria-label="Incidents on the current page"><div className="overview-card"><div className="overview-icon all-icon"><Icon name="grid" /></div><div><span>On this page</span><strong>{loading && !data ? "—" : items.length.toString().padStart(2, "0")}</strong></div><small>Current page</small></div><div className="overview-card"><div className="overview-icon open-icon"><Icon name="clock" /></div><div><span>Open</span><strong>{loading && !data ? "—" : openCount.toString().padStart(2, "0")}</strong></div><small>Needs attention</small></div><div className="overview-card"><div className="overview-icon resolved-icon"><Icon name="check" /></div><div><span>Resolved</span><strong>{loading && !data ? "—" : resolvedCount.toString().padStart(2, "0")}</strong></div><small>Completed</small></div></section>
-      <section className="records-section"><div className="section-heading"><div><span className="section-kicker">REPORTS</span><h2>Incident reports</h2><p>Browse, search, and manage reports from the field.</p></div></div><div className="toolbar"><div className="filter-tabs" role="group" aria-label="Filter by status"><button className={filter === "all" ? "selected" : ""} onClick={() => changeFilter("all")}>All incidents</button><button className={filter === "open" ? "selected" : ""} onClick={() => changeFilter("open")}>Open</button><button className={filter === "resolved" ? "selected" : ""} onClick={() => changeFilter("resolved")}>Resolved</button></div><label className="search-field"><Icon name="search" size={18} /><input type="search" placeholder="Search title, description, or location..." value={searchInput} onChange={(event) => setSearchInput(event.target.value)} maxLength={200} aria-label="Search incident title, description, or location" /></label></div>
-      {listError ? <div className="state-panel error-state"><Icon name="alert" size={28} /><h3>Could not load incidents</h3><p>{listError}</p><button onClick={() => setVersion((value) => value + 1)}>Try again <Icon name="arrow" size={16} /></button></div> : loading ? <div className="loading-list"><div className="spinner" /><span>Loading incident reports…</span></div> : items.length ? <div className="incident-list">{items.map((incident) => <IncidentCard key={incident.id} incident={incident} onOpen={setSelectedId} />)}</div> : <div className="state-panel empty-state"><div className="empty-icon"><Icon name={query ? "search" : "grid"} size={28} /></div><h3>{query ? "No matching incidents" : "No incidents yet"}</h3><p>{query ? "Try another search term or status filter." : "New field reports will appear here."}</p></div>}
-      {!listError && !loading && data && (page > 0 || data.hasNext) && <div className="pagination"><span>Page {page + 1} · Showing {items.length} incidents</span><div><button disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Previous</button><button disabled={!data.hasNext} onClick={() => setPage((value) => value + 1)}>Next <Icon name="chevron" size={15} /></button></div></div>}
+      <section className="records-section" aria-busy={loading}><div className="section-heading"><div><span className="section-kicker">REPORTS</span><h2>Incident reports</h2><p>Browse, search, and manage reports from the field.</p></div></div><div className="toolbar"><div className="filter-tabs" role="group" aria-label="Filter by status"><button className={filter === "all" ? "selected" : ""} onClick={() => changeFilter("all")}>All incidents</button><button className={filter === "open" ? "selected" : ""} onClick={() => changeFilter("open")}>Open</button><button className={filter === "resolved" ? "selected" : ""} onClick={() => changeFilter("resolved")}>Resolved</button></div><div className="search-controls"><label className="search-scope">Search in<select value={searchField} onChange={(event) => changeSearchField(event.target.value as SearchField)} aria-label="Search field"><option value="all">All text</option><option value="title">Title</option><option value="location">Location</option><option value="description">Description</option></select></label><label className="search-field"><Icon name="search" size={18} /><input type="search" placeholder="Search incidents..." value={searchInput} onChange={(event) => setSearchInput(event.target.value)} maxLength={200} aria-label="Search incidents" /></label></div></div>
+      {listError ? <div className="state-panel error-state"><Icon name="alert" size={28} /><h3>Could not load incidents</h3><p>{listError}</p><button onClick={() => setVersion((value) => value + 1)}>Try again <Icon name="arrow" size={16} /></button></div> : loading && !data ? <div className="loading-list"><div className="spinner" /><span>Loading incident reports…</span></div> : items.length ? <div className="incident-list">{items.map((incident) => <IncidentCard key={incident.id} incident={incident} onOpen={setSelectedId} />)}</div> : <div className="state-panel empty-state"><div className="empty-icon"><Icon name={query || filter !== "all" ? "search" : "grid"} size={28} /></div><h3>{query || filter !== "all" ? "No matching incidents" : "No incidents yet"}</h3><p>{query || filter !== "all" ? "Try another search term or filter." : "New field reports will appear here."}</p></div>}
+      {!listError && data && (data.page > 0 || data.hasNext) && <div className="pagination"><span>Page {data.page + 1} · Showing {items.length} incidents</span><div><button disabled={loading || data.page === 0} onClick={() => setPage((value) => value - 1)}>Previous</button><button disabled={loading || !data.hasNext} onClick={() => setPage((value) => value + 1)}>Next <Icon name="chevron" size={15} /></button></div></div>}
       </section><footer className="main-footer">FIELDNOTE <span>© 2026</span><span>Field incident management platform</span></footer>
     </div></main>
     {selectedId && <IncidentDetail incident={selected} loading={detailLoading} error={detailError} saving={saving} actionError={actionError} onClose={() => setSelectedId(null)} onToggle={toggleResolution} />}
