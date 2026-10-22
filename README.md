@@ -36,4 +36,33 @@ The API sends RFC 9457 Problem Details with a stable `code`. The data layer maps
 
 ## Code organization
 
-The top-level packages separate responsibilities: `domain/model`, `domain/repository`, and `domain/error` contain the app model, repository contract, and failure types; `data` contains API payloads, Retrofit endpoints, mappers, the repository implementation, and Hilt bindings in `data/di`; `feature` contains the UI. Within `feature`, `list` and `form` each have their own screen, Hilt ViewModel, state, and event; `detail` contains the detail screen. `IncidentReporterApplication` initializes Hilt, and `IncidentApp` coordinates navigation and passes a saved report from the form ViewModel to the list ViewModel.
+The app follows Google's recommended layered architecture with unidirectional data flow. Dependencies point inward: `feature` → `domain` ← `data`. The `domain` package is plain Kotlin and has no Android dependencies.
+
+```
+com.hyejeanmoon.fieldincidentreporter
+├── MainActivity, IncidentReporterApplication
+├── navigation/     IncidentNavHost: the type-safe navigation graph and screen transitions
+├── domain/
+│   ├── model/      Incident, IncidentPhoto, IncidentDraft, IncidentChange
+│   ├── error/      IncidentFailure, IncidentException, runSuspendCatching
+│   ├── repository/ IncidentRepository contract
+│   └── usecase/    one class per business action (get, save, delete, validate, observe changes)
+├── data/
+│   ├── remote/     Retrofit API, kotlinx.serialization DTOs, mappers, error mapping, photo upload
+│   ├── repository/ RetrofitIncidentRepository
+│   └── di/         Hilt bindings and the Retrofit setup
+├── ui/
+│   ├── theme/      Material theme
+│   ├── component/  shared composables: top bar, loading and error states, dialogs, photos, labeled text
+│   └── util/       failure messages and time formatting
+└── feature/
+    ├── list/       paged list of reports
+    ├── detail/     report details, photo gallery, and delete
+    └── form/       create and edit form, photo picker and camera
+```
+
+Each feature contains a `*Navigation.kt` file (a `@Serializable` route, a `NavController.navigateTo…` extension, and a `NavGraphBuilder` extension), a Hilt ViewModel that exposes one `StateFlow` UI state and receives UI events, a stateful `*Screen` composable, and a stateless `*Content` composable that previews use. ViewModels read their route arguments from `SavedStateHandle` and load their own data.
+
+Features do not call each other. After a successful create, update, or delete, the repository publishes an `IncidentChange`: the list reloads its pages, and an open detail screen shows the saved report. The form saves the user's edits to `SavedStateHandle` as JSON so that they survive process death.
+
+Run the unit tests with `gradle :app:testDebugUnitTest`.
