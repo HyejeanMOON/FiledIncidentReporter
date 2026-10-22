@@ -1,5 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.list
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -199,26 +202,24 @@ private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
                 text = incident.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = incident.location,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = incident.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            IncidentCardField(
+                label = stringResource(R.string.location_label),
+                value = incident.location,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            )
+            IncidentCardField(
+                label = stringResource(R.string.description_label),
+                value = incident.description,
+                maxLines = 3,
             )
             Text(
                 text = stringResource(R.string.created_at_label) + ": " + formatIncidentTime(incident.createdAt),
@@ -239,8 +240,12 @@ private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
                         IncidentPhotoImage(
                             uri = previews[index],
                             index = index,
-                            modifier = Modifier.width(144.dp).height(192.dp),
-                            contentScale = ContentScale.Inside,
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(144.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentScale = ContentScale.Fit,
                         )
                     }
                 }
@@ -250,6 +255,24 @@ private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun IncidentCardField(label: String, value: String, maxLines: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
