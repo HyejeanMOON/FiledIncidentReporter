@@ -18,16 +18,14 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import java.net.URI
 
-enum class ApiErrorCode {
-    INCIDENT_NOT_FOUND,
-    INVALID_INCIDENT,
-    INVALID_REQUEST,
-    PAYLOAD_TOO_LARGE,
-    RESOURCE_NOT_FOUND,
-    INTERNAL_ERROR,
+enum class ApiErrorCode(val defaultDetail: String) {
+    INCIDENT_NOT_FOUND("Incident not found"),
+    INVALID_INCIDENT("Invalid incident"),
+    INVALID_REQUEST("The request is invalid"),
+    PAYLOAD_TOO_LARGE("The upload exceeds the allowed size"),
+    RESOURCE_NOT_FOUND("Resource not found"),
+    INTERNAL_ERROR("An unexpected server error occurred"),
 }
-
-class ResourceNotFoundException : RuntimeException("Resource not found")
 
 @RestControllerAdvice
 class IncidentExceptionHandler : ResponseEntityExceptionHandler() {
@@ -35,20 +33,21 @@ class IncidentExceptionHandler : ResponseEntityExceptionHandler() {
 
     @ExceptionHandler(IncidentNotFoundException::class)
     fun incidentNotFound(error: IncidentNotFoundException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
-        response(HttpStatus.NOT_FOUND, ApiErrorCode.INCIDENT_NOT_FOUND, error.message ?: "Incident not found", request.requestURI)
+        response(HttpStatus.NOT_FOUND, ApiErrorCode.INCIDENT_NOT_FOUND, error, request)
 
     @ExceptionHandler(InvalidIncidentException::class)
     fun invalidIncident(error: InvalidIncidentException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
-        response(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_INCIDENT, error.message ?: "Invalid incident", request.requestURI)
+        response(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_INCIDENT, error, request)
 
-    @ExceptionHandler(ResourceNotFoundException::class, PhotoNotFoundException::class)
-    fun resourceNotFound(error: RuntimeException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
-        response(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, error.message ?: "Resource not found", request.requestURI)
+    @ExceptionHandler(PhotoNotFoundException::class)
+    fun photoNotFound(error: PhotoNotFoundException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
+        response(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, error, request)
 
     @ExceptionHandler(Exception::class)
     fun unexpected(error: Exception, request: HttpServletRequest): ResponseEntity<ProblemDetail> {
         log.error("Unexpected API error at {}", request.requestURI, error)
-        return response(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "An unexpected server error occurred", request.requestURI)
+        val code = ApiErrorCode.INTERNAL_ERROR
+        return ResponseEntity.internalServerError().body(problem(HttpStatus.INTERNAL_SERVER_ERROR, code, code.defaultDetail, request.requestURI))
     }
 
     override fun handleExceptionInternal(
@@ -64,18 +63,18 @@ class IncidentExceptionHandler : ResponseEntityExceptionHandler() {
             else -> if (statusCode.is4xxClientError) ApiErrorCode.INVALID_REQUEST else ApiErrorCode.INTERNAL_ERROR
         }
         if (statusCode.is5xxServerError) log.error("Spring MVC error", ex)
-        val detail = when (code) {
-            ApiErrorCode.PAYLOAD_TOO_LARGE -> "The upload exceeds the allowed size"
-            ApiErrorCode.RESOURCE_NOT_FOUND -> "Resource not found"
-            ApiErrorCode.INTERNAL_ERROR -> "An unexpected server error occurred"
-            else -> "The request is invalid"
-        }
-        val problem = problem(statusCode, code, detail, request.getDescription(false).removePrefix("uri="))
+        val problem = problem(statusCode, code, code.defaultDetail, request.getDescription(false).removePrefix("uri="))
         return super.handleExceptionInternal(ex, problem, headers, statusCode, request)
     }
 
-    private fun response(status: HttpStatus, code: ApiErrorCode, detail: String, path: String): ResponseEntity<ProblemDetail> =
-        ResponseEntity.status(status).body(problem(status, code, detail, path))
+    /** Builds a response whose detail is the domain exception's own message. */
+    private fun response(
+        status: HttpStatus,
+        code: ApiErrorCode,
+        error: RuntimeException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetail> =
+        ResponseEntity.status(status).body(problem(status, code, error.message ?: code.defaultDetail, request.requestURI))
 
     private fun problem(status: HttpStatusCode, code: ApiErrorCode, detail: String, path: String): ProblemDetail =
         ProblemDetail.forStatusAndDetail(status, detail).apply {
