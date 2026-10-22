@@ -12,6 +12,7 @@ data class IncidentFormUiState(
     val location: String = "",
     val description: String = "",
     val photos: List<IncidentPhoto> = emptyList(),
+    val originalPhotoIds: List<String> = emptyList(),
     val loadingIncidentId: String? = null,
     val loadFailure: IncidentFailure? = null,
     val missingFields: List<RequiredIncidentField> = emptyList(),
@@ -21,6 +22,12 @@ data class IncidentFormUiState(
     val error: IncidentFailure? = null,
     val savedIncident: Incident? = null,
 ) {
+    val deletedPhotoIds: List<String>
+        get() {
+            val retainedIds = photos.filterIsInstance<IncidentPhoto.Stored>().map(IncidentPhoto.Stored::id).toSet()
+            return originalPhotoIds.filterNot(retainedIds::contains)
+        }
+
     val isSubmitEnabled: Boolean
         get() = isInitialized && !isSaving && savedIncident == null && missingFields.isEmpty()
 }

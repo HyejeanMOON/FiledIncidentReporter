@@ -17,10 +17,10 @@ The server listens on port 8080 and stores incidents in a local H2 database. The
 | GET | `/incidents?page=0&size=20` | List reports in pages |
 | GET | `/incidents/{id}` | Read one report for detail and edit screens |
 | POST | `/incidents` | Create a report with multipart photo files |
-| PUT | `/incidents/{id}` | Update a report and upload new photo files |
+| PATCH | `/incidents/{id}` | Update a report, delete photos by ID, and upload new photo files |
 | DELETE | `/incidents/{id}` | Remove a report |
 
-Each report has string `id`, `title`, `location`, `description`, and `photoUris` fields. The server generates the ID and stores uploaded image bytes. The response contains relative server photo paths.
+Each report has string `id`, `title`, `location`, `description`, and `photos` fields. Each photo has a server-generated ID, an original file URL, and a thumbnail URL. The list API returns photo metadata instead of embedded Base64 previews. An update sends `deletePhotoIds` for removed old photos and multipart files for new photos; unchanged photos are not uploaded again.
 
 ## Run the Android app
 

@@ -28,6 +28,7 @@ private const val DESCRIPTION_KEY = "form_description"
 private const val PHOTO_TYPES_KEY = "form_photo_types"
 private const val PHOTO_REFERENCES_KEY = "form_photo_references"
 private const val PHOTO_DISPLAY_URIS_KEY = "form_photo_display_uris"
+private const val ORIGINAL_PHOTO_IDS_KEY = "form_original_photo_ids"
 private const val VALIDATED_FIELDS_KEY = "form_validated_fields"
 
 @HiltViewModel
@@ -81,6 +82,9 @@ class IncidentFormViewModel @Inject constructor(
             is IncidentFormUiEvent.PhotosSelected -> {
                 reduce(IncidentFormStateChange.PhotosSelected(event.uris), persistForm = true, validate = true)
             }
+            is IncidentFormUiEvent.PhotoRemoved -> {
+                reduce(IncidentFormStateChange.PhotoRemoved(event.photo), persistForm = true, validate = true)
+            }
             IncidentFormUiEvent.PhotoInputCancelled -> {
                 reduce(IncidentFormStateChange.PhotoInputCancelled, persistForm = true)
             }
@@ -119,6 +123,7 @@ class IncidentFormViewModel @Inject constructor(
                             request.description,
                             request.photos,
                         ),
+                        request.deletedPhotoIds,
                     )
                 }
                 reduce(IncidentFormStateChange.SaveSucceeded(saved))
@@ -161,10 +166,11 @@ class IncidentFormViewModel @Inject constructor(
         savedStateHandle[PHOTO_REFERENCES_KEY] = ArrayList(state.photos.map { photo ->
             when (photo) {
                 is IncidentPhoto.Local -> photo.uri
-                is IncidentPhoto.Stored -> photo.reference
+                is IncidentPhoto.Stored -> photo.id
             }
         })
         savedStateHandle[PHOTO_DISPLAY_URIS_KEY] = ArrayList(state.photos.map(IncidentPhoto::displayUri))
+        savedStateHandle[ORIGINAL_PHOTO_IDS_KEY] = ArrayList(state.originalPhotoIds)
         savedStateHandle[VALIDATED_FIELDS_KEY] = ArrayList(state.validatedFields.map { it.name })
     }
 }
@@ -179,6 +185,7 @@ private fun restoreFormState(handle: SavedStateHandle): IncidentFormUiState = In
     location = handle[LOCATION_KEY] ?: "",
     description = handle[DESCRIPTION_KEY] ?: "",
     photos = restorePhotos(handle),
+    originalPhotoIds = handle.get<ArrayList<String>>(ORIGINAL_PHOTO_IDS_KEY).orEmpty(),
     validatedFields = handle.get<ArrayList<String>>(VALIDATED_FIELDS_KEY)
         ?.mapNotNull { value -> RequiredIncidentField.entries.firstOrNull { it.name == value } }
         ?.toSet()

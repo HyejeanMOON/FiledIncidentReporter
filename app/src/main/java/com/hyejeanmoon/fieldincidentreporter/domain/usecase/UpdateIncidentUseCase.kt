@@ -8,7 +8,7 @@ import javax.inject.Inject
 class UpdateIncidentUseCase @Inject constructor(
     private val repository: IncidentRepository,
 ) {
-    suspend operator fun invoke(incident: Incident): Incident {
+    suspend operator fun invoke(incident: Incident, deletePhotoIds: List<String>): Incident {
         val normalized = IncidentDraft(
             title = incident.title,
             location = incident.location,
@@ -22,6 +22,7 @@ class UpdateIncidentUseCase @Inject constructor(
                 description = normalized.description,
                 photos = normalized.photos,
             ),
+            deletePhotoIds,
         )
     }
 }

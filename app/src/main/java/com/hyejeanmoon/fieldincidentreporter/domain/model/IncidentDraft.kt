@@ -13,7 +13,7 @@ data class IncidentDraft(
         photos = photos.filter { photo ->
             when (photo) {
                 is IncidentPhoto.Local -> photo.uri.isNotBlank()
-                is IncidentPhoto.Stored -> photo.reference.isNotBlank()
+                is IncidentPhoto.Stored -> photo.id.isNotBlank()
             }
         },
     )

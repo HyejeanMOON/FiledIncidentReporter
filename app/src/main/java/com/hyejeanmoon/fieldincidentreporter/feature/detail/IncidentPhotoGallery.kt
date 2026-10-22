@@ -97,6 +97,7 @@ internal fun IncidentPhotoGallery(photoUrls: List<String>) {
                             uri = photoUrls[page],
                             index = page,
                             modifier = Modifier.fillMaxSize().padding(8.dp),
+                            fullResolution = true,
                         )
                     }
                     Row(

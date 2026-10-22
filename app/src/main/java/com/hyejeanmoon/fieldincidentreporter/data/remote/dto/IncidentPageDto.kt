@@ -12,5 +12,5 @@ internal data class IncidentListItemDto(
     val title: String,
     val location: String,
     val description: String,
-    val photos: List<String>,
+    val photos: List<IncidentPhotoDto>,
 )

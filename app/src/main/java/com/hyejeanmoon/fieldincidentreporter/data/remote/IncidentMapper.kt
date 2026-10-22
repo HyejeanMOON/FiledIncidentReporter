@@ -11,15 +11,15 @@ internal fun IncidentDto.toIncident(photoUrlResolver: RetrofitIncidentPhotoUrlRe
     title = title,
     location = location,
     description = description,
-    photos = photoUris.orEmpty().map { path ->
-        IncidentPhoto.Stored(path, photoUrlResolver.resolve(path))
+    photos = photos.orEmpty().map { photo ->
+        IncidentPhoto.Stored(photo.id, photoUrlResolver.resolve(photo.url))
     },
 )
 
-internal fun IncidentListItemDto.toSummary() = IncidentSummary(
+internal fun IncidentListItemDto.toSummary(photoUrlResolver: RetrofitIncidentPhotoUrlResolver) = IncidentSummary(
     id = id,
     title = title,
     location = location,
     description = description,
-    photoPreviews = photos,
+    photoPreviews = photos.map { photoUrlResolver.resolve(it.thumbnailUrl) },
 )

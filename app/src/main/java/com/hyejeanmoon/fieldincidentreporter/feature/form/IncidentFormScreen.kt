@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -39,6 +41,7 @@ import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentPhotoImage
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -177,6 +180,24 @@ fun IncidentFormScreen(
                         text = stringResource(R.string.photos_selected, uiState.photos.size),
                         style = MaterialTheme.typography.labelMedium,
                     )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(uiState.photos.size) { index ->
+                            val photo = uiState.photos[index]
+                            Column {
+                                IncidentPhotoImage(
+                                    uri = photo.displayUri,
+                                    index = index,
+                                    modifier = Modifier.size(96.dp),
+                                )
+                                TextButton(
+                                    onClick = { onEvent(IncidentFormUiEvent.PhotoRemoved(photo)) },
+                                    enabled = canEdit,
+                                ) {
+                                    Text(stringResource(R.string.remove_photo))
+                                }
+                            }
+                        }
+                    }
                     TextButton(
                         onClick = { onEvent(IncidentFormUiEvent.PhotosRemoved) },
                         enabled = canEdit,

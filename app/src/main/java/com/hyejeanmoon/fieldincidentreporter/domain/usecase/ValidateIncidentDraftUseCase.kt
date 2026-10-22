@@ -13,7 +13,7 @@ class ValidateIncidentDraftUseCase @Inject constructor() {
         if (draft.photos.size !in 1..20 || draft.photos.any { photo ->
                 when (photo) {
                     is IncidentPhoto.Local -> photo.uri.isBlank()
-                    is IncidentPhoto.Stored -> photo.reference.isBlank()
+                    is IncidentPhoto.Stored -> photo.id.isBlank()
                 }
             }) add(RequiredIncidentField.PHOTOS)
     }

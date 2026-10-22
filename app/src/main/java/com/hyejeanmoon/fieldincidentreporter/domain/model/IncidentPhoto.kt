@@ -8,7 +8,7 @@ sealed interface IncidentPhoto {
     }
 
     data class Stored(
-        val reference: String,
+        val id: String,
         override val displayUri: String,
     ) : IncidentPhoto
 }

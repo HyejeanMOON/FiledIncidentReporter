@@ -8,6 +8,6 @@ interface IncidentRepository {
     suspend fun getIncidentsPage(page: Int, size: Int): IncidentPage
     suspend fun getIncident(id: String): Incident
     suspend fun create(title: String, location: String, description: String, photos: List<IncidentPhoto>): Incident
-    suspend fun update(incident: Incident): Incident
+    suspend fun update(incident: Incident, deletePhotoIds: List<String>): Incident
     suspend fun delete(id: String)
 }

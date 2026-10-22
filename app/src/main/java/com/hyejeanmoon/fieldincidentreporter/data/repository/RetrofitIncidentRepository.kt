@@ -24,7 +24,7 @@ internal class RetrofitIncidentRepository @Inject constructor(
 ) : IncidentRepository {
     override suspend fun getIncidentsPage(page: Int, size: Int): IncidentPage = incidentRequest {
         val response = api.getIncidents(page, size)
-        IncidentPage(response.items.map { it.toSummary() }, response.page, response.hasNext)
+        IncidentPage(response.items.map { it.toSummary(photoUrlResolver) }, response.page, response.hasNext)
     }
 
     override suspend fun getIncident(id: String): Incident = incidentRequest {
@@ -46,17 +46,15 @@ internal class RetrofitIncidentRepository @Inject constructor(
         ).toIncident(photoUrlResolver)
     }
 
-    override suspend fun update(incident: Incident) = incidentRequest {
+    override suspend fun update(incident: Incident, deletePhotoIds: List<String>) = incidentRequest {
         val localPhotos = incident.photos.filterIsInstance<IncidentPhoto.Local>()
-        val retainedPhotos = incident.photos.filterIsInstance<IncidentPhoto.Stored>()
         api.update(
             incident.id,
             IncidentUpdateBody(
-                incident.id,
                 incident.title,
                 incident.location,
                 incident.description,
-                retainedPhotos.map(IncidentPhoto.Stored::reference),
+                deletePhotoIds,
             ),
             localPhotos.mapIndexed { index, photo -> photoPart(context, photo.uri, index) },
         ).toIncident(photoUrlResolver)

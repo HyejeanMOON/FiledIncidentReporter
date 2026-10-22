@@ -15,20 +15,20 @@ class IncidentMapperTest {
     )
 
     @Test
-    fun `list photos map to previews while detail photo paths remain separate`() {
+    fun `list thumbnails and detail photos resolve separately from photo ids`() {
         val page = gson.fromJson(
-            """{"items":[{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photos":["data:image/jpeg;base64,AAAA"]}],"page":0,"size":20,"hasNext":false}""",
+            """{"items":[{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}],"page":0,"size":20,"hasNext":false}""",
             IncidentPageDto::class.java,
         )
-        val summary = page.items.single().toSummary()
-        assertEquals(listOf("data:image/jpeg;base64,AAAA"), summary.photoPreviews)
+        val summary = page.items.single().toSummary(photoUrlResolver)
+        assertEquals(listOf("http://example.test/incidents/1/photos/photo-1/thumbnail"), summary.photoPreviews)
 
         val detail = gson.fromJson(
-            """{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photoUris":["/photos/1.jpg"]}""",
+            """{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}""",
             IncidentDto::class.java,
         ).toIncident(photoUrlResolver)
         assertEquals(
-            listOf(IncidentPhoto.Stored("/photos/1.jpg", "http://example.test/photos/1.jpg")),
+            listOf(IncidentPhoto.Stored("photo-1", "http://example.test/incidents/1/photos/photo-1")),
             detail.photos,
         )
     }

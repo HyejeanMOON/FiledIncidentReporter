@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.CircularProgressIndicator
@@ -225,8 +226,8 @@ private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
                         IncidentPhotoImage(
                             uri = previews[index],
                             index = index,
-                            modifier = Modifier.size(96.dp),
-                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.width(144.dp).height(192.dp),
+                            contentScale = ContentScale.Inside,
                         )
                     }
                 }

@@ -15,6 +15,7 @@
     <string name="choose_photos">Choose photos</string>
     <string name="take_photo">Take photo</string>
     <string name="remove_photos">Remove all photos</string>
+    <string name="remove_photo">Remove</string>
     <string name="photos_selected">%1$d photos selected</string>
     <string name="required_field_error">This field is required.</string>
     <string name="required_photos_error">Select 1 to 20 photos.</string>

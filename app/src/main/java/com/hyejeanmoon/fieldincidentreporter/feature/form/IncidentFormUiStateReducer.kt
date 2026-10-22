@@ -13,6 +13,7 @@ internal sealed interface IncidentFormStateChange {
     data class LocationChanged(val value: String) : IncidentFormStateChange
     data class DescriptionChanged(val value: String) : IncidentFormStateChange
     data class PhotosSelected(val uris: List<String>) : IncidentFormStateChange
+    data class PhotoRemoved(val photo: IncidentPhoto) : IncidentFormStateChange
     data object PhotoInputCancelled : IncidentFormStateChange
     data object PhotosRemoved : IncidentFormStateChange
     data class FieldFocusChanged(val field: RequiredIncidentField, val isFocused: Boolean) : IncidentFormStateChange
@@ -39,12 +40,17 @@ internal object IncidentFormUiStateReducer {
             location = change.incident?.location.orEmpty(),
             description = change.incident?.description.orEmpty(),
             photos = change.incident?.photos.orEmpty(),
+            originalPhotoIds = change.incident?.photos.orEmpty()
+                .filterIsInstance<IncidentPhoto.Stored>().map(IncidentPhoto.Stored::id),
         )
         is IncidentFormStateChange.TitleChanged -> previous.edit { copy(title = change.value) }
         is IncidentFormStateChange.LocationChanged -> previous.edit { copy(location = change.value) }
         is IncidentFormStateChange.DescriptionChanged -> previous.edit { copy(description = change.value) }
         is IncidentFormStateChange.PhotosSelected -> if (change.uris.isEmpty()) previous else {
             previous.edit { copy(photos = (photos + change.uris.map(IncidentPhoto::Local)).distinct()) }
+        }
+        is IncidentFormStateChange.PhotoRemoved -> previous.edit {
+            copy(photos = photos - change.photo, validatedFields = validatedFields + RequiredIncidentField.PHOTOS)
         }
         IncidentFormStateChange.PhotoInputCancelled -> previous.edit {
             if (photos.isEmpty()) {

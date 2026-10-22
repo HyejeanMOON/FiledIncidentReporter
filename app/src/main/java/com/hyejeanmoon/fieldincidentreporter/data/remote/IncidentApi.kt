@@ -11,7 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.Part
 import retrofit2.http.POST
-import retrofit2.http.PUT
+import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -27,7 +27,7 @@ internal interface IncidentApi {
     suspend fun create(@Part("incident") incident: IncidentBody, @Part photos: List<MultipartBody.Part>): IncidentDto
 
     @Multipart
-    @PUT("incidents/{id}")
+    @PATCH("incidents/{id}")
     suspend fun update(
         @Path("id") id: String,
         @Part("incident") incident: IncidentUpdateBody,

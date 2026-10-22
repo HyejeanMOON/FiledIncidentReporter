@@ -14,6 +14,24 @@ import org.junit.Test
 
 class IncidentFormViewModelTest {
     @Test
+    fun `mixed photo edit sends only removed stored ids and keeps new local photo`() {
+        val first = IncidentPhoto.Stored("photo-A", "http://example.test/A")
+        val second = IncidentPhoto.Stored("photo-B", "http://example.test/B")
+        val loaded = IncidentFormUiStateReducer.reduce(
+            IncidentFormUiState(),
+            IncidentFormStateChange.Initialized(Incident("incident-1", "Title", "Room", "Details", listOf(first, second))),
+        )
+        val removed = IncidentFormUiStateReducer.reduce(loaded, IncidentFormStateChange.PhotoRemoved(second))
+        val updated = IncidentFormUiStateReducer.reduce(
+            removed,
+            IncidentFormStateChange.PhotosSelected(listOf("content://photos/new")),
+        )
+
+        assertEquals(listOf("photo-B"), updated.deletedPhotoIds)
+        assertEquals(listOf(first, IncidentPhoto.Local("content://photos/new")), updated.photos)
+    }
+
+    @Test
     fun `editing validates the latest form state before exposing it`() {
         val repository = UnusedIncidentRepository()
         val viewModel = IncidentFormViewModel(
@@ -43,8 +61,9 @@ class IncidentFormViewModelTest {
                 "form_initialized" to true,
                 "form_incident_id" to "incident-1",
                 "form_photo_types" to arrayListOf("stored", "local"),
-                "form_photo_references" to arrayListOf("/photos/1.jpg", "content://photos/2"),
+                "form_photo_references" to arrayListOf("photo-1", "content://photos/2"),
                 "form_photo_display_uris" to arrayListOf("http://example.test/photos/1.jpg", "content://photos/2"),
+                "form_original_photo_ids" to arrayListOf("photo-1"),
             ),
         )
         val repository = UnusedIncidentRepository()
@@ -58,11 +77,14 @@ class IncidentFormViewModelTest {
 
         assertEquals(
             listOf(
-                IncidentPhoto.Stored("/photos/1.jpg", "http://example.test/photos/1.jpg"),
+                IncidentPhoto.Stored("photo-1", "http://example.test/photos/1.jpg"),
                 IncidentPhoto.Local("content://photos/2"),
             ),
             viewModel.uiState.value.photos,
         )
+        viewModel.onEvent(IncidentFormUiEvent.PhotoRemoved(viewModel.uiState.value.photos.first()))
+        assertEquals(listOf("photo-1"), viewModel.uiState.value.deletedPhotoIds)
+        assertEquals(listOf(IncidentPhoto.Local("content://photos/2")), viewModel.uiState.value.photos)
     }
 }
 
@@ -70,6 +92,6 @@ private class UnusedIncidentRepository : IncidentRepository {
     override suspend fun getIncidentsPage(page: Int, size: Int): IncidentPage = error("Not used")
     override suspend fun getIncident(id: String): Incident = error("Not used")
     override suspend fun create(title: String, location: String, description: String, photos: List<IncidentPhoto>): Incident = error("Not used")
-    override suspend fun update(incident: Incident): Incident = error("Not used")
+    override suspend fun update(incident: Incident, deletePhotoIds: List<String>): Incident = error("Not used")
     override suspend fun delete(id: String): Unit = error("Not used")
 }
