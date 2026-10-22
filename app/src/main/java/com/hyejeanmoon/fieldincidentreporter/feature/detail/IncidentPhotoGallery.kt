@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.hyejeanmoon.fieldincidentreporter.R
-import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentPhotoImage
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoImage
 import kotlinx.coroutines.launch
 
 @Composable

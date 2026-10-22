@@ -1,5 +1,7 @@
 package com.hyejeanmoon.fieldincidentreporter.domain.model
 
+const val MAX_INCIDENT_PHOTOS = 20
+
 data class IncidentDraft(
     val title: String,
     val location: String,
@@ -10,11 +12,13 @@ data class IncidentDraft(
         title = title.trim(),
         location = location.trim(),
         description = description.trim(),
-        photos = photos.filter { photo ->
-            when (photo) {
-                is IncidentPhoto.Local -> photo.uri.isNotBlank()
-                is IncidentPhoto.Stored -> photo.id.isNotBlank()
-            }
-        },
+        photos = photos.filterNot(IncidentPhoto::isBlank),
     )
+}
+
+enum class RequiredIncidentField {
+    TITLE,
+    LOCATION,
+    DESCRIPTION,
+    PHOTOS,
 }

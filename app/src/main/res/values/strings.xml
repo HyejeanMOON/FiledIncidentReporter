@@ -34,7 +34,6 @@
     <string name="back_to_list">Back to reports</string>
     <string name="incident_details_title">Incident details</string>
     <string name="edit">Edit</string>
-    <string name="delete_incident">Delete incident</string>
     <string name="delete_confirmation_title">Delete this incident?</string>
     <string name="delete_confirmation_message">This permanently removes the incident and its photos from the server.</string>
     <string name="refresh">Refresh</string>
@@ -51,5 +50,4 @@
     <string name="error_unknown">Something went wrong. Please try again.</string>
     <string name="ok">OK</string>
     <string name="delete">Delete</string>
-    <string name="incident_missing">This incident is no longer available.</string>
 </resources>

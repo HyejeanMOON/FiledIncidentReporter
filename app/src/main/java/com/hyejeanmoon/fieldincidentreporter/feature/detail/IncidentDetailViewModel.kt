@@ -1,76 +1,74 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.detail
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
+import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentChange
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ObserveIncidentChangesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed interface IncidentDetailAction {
-    data object Delete : IncidentDetailAction
-    data object ErrorDismissed : IncidentDetailAction
-    data class DeleteAcknowledged(val incidentId: String) : IncidentDetailAction
-}
-
 @HiltViewModel
 class IncidentDetailViewModel @Inject constructor(
-    private val deleteIncident: DeleteIncidentUseCase,
+    savedStateHandle: SavedStateHandle,
     private val getIncident: GetIncidentUseCase,
+    private val deleteIncident: DeleteIncidentUseCase,
+    observeIncidentChanges: ObserveIncidentChangesUseCase,
 ) : ViewModel() {
+    private val incidentId = savedStateHandle.toIncidentDetailRoute().incidentId
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
     val uiState = _uiState.asStateFlow()
 
-    fun load(id: String, refresh: Boolean = false) {
-        val current = _uiState.value
-        if (current.loadingIncidentId == id || (!refresh && current.incident?.id == id)) return
-        reduce(IncidentDetailStateChange.LoadStarted(id))
-        viewModelScope.launch {
-            try {
-                reduce(IncidentDetailStateChange.LoadSucceeded(id, getIncident(id)))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                reduce(IncidentDetailStateChange.LoadFailed(id, error.toIncidentFailure()))
+    init {
+        load()
+        // An edit saved from the form shows here without another request.
+        observeIncidentChanges()
+            .filterIsInstance<IncidentChange.Saved>()
+            .onEach { change ->
+                if (change.incident.id == incidentId) _uiState.update { it.copy(incident = change.incident) }
             }
-        }
+            .launchIn(viewModelScope)
     }
 
     fun onAction(action: IncidentDetailAction) {
         when (action) {
-            IncidentDetailAction.Delete -> deleteIncident()
-            IncidentDetailAction.ErrorDismissed -> reduce(IncidentDetailStateChange.ErrorCleared)
-            is IncidentDetailAction.DeleteAcknowledged -> reduce(
-                IncidentDetailStateChange.DeleteAcknowledged(action.incidentId),
-            )
+            IncidentDetailAction.Retry -> load()
+            IncidentDetailAction.Delete -> delete()
+            IncidentDetailAction.ErrorDismissed -> _uiState.update { it.copy(error = null) }
         }
     }
 
-    private fun deleteIncident() {
-        val incident = _uiState.value.incident ?: return
-        if (_uiState.value.isDeleting || _uiState.value.deletedIncidentId != null) return
-        reduce(IncidentDetailStateChange.DeleteStarted)
+    private fun load() {
+        _uiState.update { it.copy(loadFailure = null) }
         viewModelScope.launch {
-            try {
-                deleteIncident(incident.id)
-                reduce(IncidentDetailStateChange.DeleteSucceeded(incident.id))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                reduce(IncidentDetailStateChange.DeleteFailed(error.toIncidentFailure()))
-            } finally {
-                reduce(IncidentDetailStateChange.DeleteFinished)
-            }
+            runSuspendCatching { getIncident(incidentId) }
+                .onSuccess { incident -> _uiState.update { it.copy(incident = incident) } }
+                .onFailure { error -> _uiState.update { it.copy(loadFailure = error.toIncidentFailure()) } }
         }
     }
 
-    private fun reduce(change: IncidentDetailStateChange) {
-        _uiState.update { IncidentDetailUiStateReducer.reduce(it, change) }
+    private fun delete() {
+        val state = _uiState.value
+        if (state.incident == null || state.isDeleting) return
+        _uiState.update { it.copy(isDeleting = true, error = null) }
+        viewModelScope.launch {
+            runSuspendCatching { deleteIncident(incidentId) }
+                // Stay in the deleting state so that nothing can be pressed while the screen closes.
+                .onSuccess { _uiState.update { it.copy(isDeleted = true) } }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isDeleting = false, error = error.toIncidentFailure()) }
+                }
+        }
     }
 }

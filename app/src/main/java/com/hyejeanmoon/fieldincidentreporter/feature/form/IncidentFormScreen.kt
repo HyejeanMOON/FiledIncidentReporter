@@ -1,5 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -10,16 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,8 +24,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -37,43 +35,69 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hyejeanmoon.fieldincidentreporter.R
-import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
-import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentPhotoImage
+import com.hyejeanmoon.fieldincidentreporter.ui.component.BackTopAppBar
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentLoadFailureScreen
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoThumbnail
+import com.hyejeanmoon.fieldincidentreporter.ui.component.LoadingContent
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IncidentFormScreen(
+internal fun IncidentFormScreen(
+    onBack: () -> Unit,
+    onSaved: () -> Unit,
+    viewModel: IncidentFormViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(enabled = uiState.isSaving) { }
+    if (uiState.isSaved) LaunchedEffect(Unit) { onSaved() }
+    val photoInput = rememberPhotoInput(
+        onPhotosSelected = { viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(it)) },
+        onCancelled = { viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled) },
+    )
+
+    val loadFailure = uiState.loadFailure
+    when {
+        uiState.isLoading -> LoadingContent(Modifier.fillMaxSize())
+        loadFailure != null -> IncidentLoadFailureScreen(
+            title = stringResource(R.string.edit_incident_title),
+            failure = loadFailure,
+            onBack = onBack,
+            onRetry = { viewModel.onEvent(IncidentFormUiEvent.Retry) },
+        )
+        else -> IncidentFormContent(
+            uiState = uiState,
+            onBack = onBack,
+            onChoosePhotos = photoInput.choosePhotos,
+            onTakePhoto = photoInput.takePhoto,
+            onEvent = viewModel::onEvent,
+        )
+    }
+
+    uiState.error?.let { error ->
+        IncidentErrorDialog(failure = error, onDismiss = { viewModel.onEvent(IncidentFormUiEvent.ErrorDismissed) })
+    }
+}
+
+@Composable
+internal fun IncidentFormContent(
     uiState: IncidentFormUiState,
     onBack: () -> Unit,
     onChoosePhotos: () -> Unit,
     onTakePhoto: () -> Unit,
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
-    val visibleMissingFields = uiState.missingFields.filter { it in uiState.validatedFields }
-    val photosError = RequiredIncidentField.PHOTOS in visibleMissingFields
-    val canEdit = !uiState.isSaving && uiState.savedIncident == null
+    val missingFields = uiState.visibleMissingFields
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(
-                            if (uiState.incidentId == null) R.string.new_incident_title else R.string.edit_incident_title,
-                        ),
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !uiState.isSaving) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                        )
-                    }
-                },
+            BackTopAppBar(
+                title = stringResource(if (uiState.isEditing) R.string.edit_incident_title else R.string.new_incident_title),
+                onBack = onBack,
+                backEnabled = !uiState.isSaving,
             )
         },
     ) { contentPadding ->
@@ -90,200 +114,181 @@ fun IncidentFormScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            RequiredIncidentTextField(
+            RequiredTextField(
+                field = RequiredIncidentField.TITLE,
                 value = uiState.title,
                 onValueChange = { onEvent(IncidentFormUiEvent.TitleChanged(it)) },
-                field = RequiredIncidentField.TITLE,
                 labelRes = R.string.incident_title_label,
-                isError = RequiredIncidentField.TITLE in visibleMissingFields,
-                enabled = canEdit,
+                isError = RequiredIncidentField.TITLE in missingFields,
+                enabled = uiState.canEdit,
                 onEvent = onEvent,
             )
-            RequiredIncidentTextField(
+            RequiredTextField(
+                field = RequiredIncidentField.LOCATION,
                 value = uiState.location,
                 onValueChange = { onEvent(IncidentFormUiEvent.LocationChanged(it)) },
-                field = RequiredIncidentField.LOCATION,
                 labelRes = R.string.location_label,
-                isError = RequiredIncidentField.LOCATION in visibleMissingFields,
-                enabled = canEdit,
+                isError = RequiredIncidentField.LOCATION in missingFields,
+                enabled = uiState.canEdit,
                 onEvent = onEvent,
             )
-            RequiredIncidentTextField(
+            RequiredTextField(
+                field = RequiredIncidentField.DESCRIPTION,
                 value = uiState.description,
                 onValueChange = { onEvent(IncidentFormUiEvent.DescriptionChanged(it)) },
-                field = RequiredIncidentField.DESCRIPTION,
                 labelRes = R.string.description_label,
-                isError = RequiredIncidentField.DESCRIPTION in visibleMissingFields,
-                enabled = canEdit,
+                isError = RequiredIncidentField.DESCRIPTION in missingFields,
+                enabled = uiState.canEdit,
                 onEvent = onEvent,
             )
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = if (photosError) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            Color.Transparent
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.photos_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (photosError) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-                Text(
-                    text = stringResource(R.string.photos_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (photosError) {
-                    Text(
-                        text = stringResource(R.string.required_photos_error),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = onChoosePhotos,
-                        modifier = Modifier.onFocusChanged { focusState ->
-                            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
-                        },
-                        enabled = canEdit,
-                    ) {
-                        Text(stringResource(R.string.choose_photos))
-                    }
-                    OutlinedButton(
-                        onClick = onTakePhoto,
-                        modifier = Modifier.onFocusChanged { focusState ->
-                            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.PHOTOS, focusState.isFocused))
-                        },
-                        enabled = canEdit,
-                    ) {
-                        Text(stringResource(R.string.take_photo))
-                    }
-                }
-                if (uiState.photos.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.photos_selected, uiState.photos.size),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(uiState.photos.size) { index ->
-                            val photo = uiState.photos[index]
-                            Column {
-                                IncidentPhotoImage(
-                                    uri = photo.displayUri,
-                                    index = index,
-                                    modifier = Modifier.size(96.dp),
-                                )
-                                TextButton(
-                                    onClick = { onEvent(IncidentFormUiEvent.PhotoRemoved(photo)) },
-                                    enabled = canEdit,
-                                ) {
-                                    Text(stringResource(R.string.remove_photo))
-                                }
-                            }
-                        }
-                    }
-                    TextButton(
-                        onClick = { onEvent(IncidentFormUiEvent.PhotosRemoved) },
-                        enabled = canEdit,
-                    ) {
-                        Text(stringResource(R.string.remove_photos))
-                    }
-                }
-            }
+            PhotoSection(
+                uiState = uiState,
+                isError = RequiredIncidentField.PHOTOS in missingFields,
+                onChoosePhotos = onChoosePhotos,
+                onTakePhoto = onTakePhoto,
+                onEvent = onEvent,
+            )
             Button(
                 onClick = { onEvent(IncidentFormUiEvent.Submit) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState.isSubmitEnabled,
             ) {
-                if (uiState.isSaving) CircularProgressIndicator()
-                else Text(stringResource(if (uiState.incidentId == null) R.string.submit_incident else R.string.save_changes))
+                if (uiState.isSaving) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(stringResource(if (uiState.isEditing) R.string.save_changes else R.string.submit_incident))
+                }
             }
-            TextButton(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isSaving,
-            ) {
+            TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth(), enabled = !uiState.isSaving) {
                 Text(stringResource(R.string.cancel))
             }
         }
     }
-    if (uiState.isSaving && uiState.incidentId == null) {
-        Dialog(
-            onDismissRequest = {},
-            properties = DialogProperties(
-                dismissOnBackPress = false,
-                dismissOnClickOutside = false,
-            ),
-        ) {
-            Surface(shape = MaterialTheme.shapes.large) {
-                LoadingIncidentScreen(
-                    message = stringResource(R.string.submitting_incident),
-                    modifier = Modifier.padding(24.dp),
-                )
-            }
-        }
-    }
+    if (uiState.isSaving && !uiState.isEditing) SubmittingDialog()
 }
 
 @Composable
-private fun RequiredIncidentTextField(
+private fun RequiredTextField(
+    field: RequiredIncidentField,
     value: String,
     onValueChange: (String) -> Unit,
-    field: RequiredIncidentField,
     @StringRes labelRes: Int,
     isError: Boolean,
     enabled: Boolean,
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
+    val multiline = field == RequiredIncidentField.DESCRIPTION
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(labelRes)) },
-        modifier = Modifier.fillMaxWidth().onFocusChanged { focusState ->
-            onEvent(IncidentFormUiEvent.FieldFocusChanged(field, focusState.isFocused))
-        },
-        singleLine = field != RequiredIncidentField.DESCRIPTION,
-        minLines = if (field == RequiredIncidentField.DESCRIPTION) 4 else 1,
+        modifier = Modifier.fillMaxWidth().reportFocus(field, onEvent),
+        singleLine = !multiline,
+        minLines = if (multiline) 4 else 1,
         isError = isError,
         supportingText = { if (isError) Text(stringResource(R.string.required_field_error)) },
         enabled = enabled,
     )
 }
 
-private val PreviewIncident = Incident(
-    id = "preview-hydraulic-press",
-    title = "Hydraulic press is not responding",
-    location = "Workshop · Bay 3",
-    description = "The control panel does not respond when the machine is switched on.",
-    createdAt = java.time.Instant.parse("2026-10-20T09:00:00Z"),
-    updatedAt = java.time.Instant.parse("2026-10-21T11:30:00Z"),
-)
+@Composable
+private fun PhotoSection(
+    uiState: IncidentFormUiState,
+    isError: Boolean,
+    onChoosePhotos: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onEvent: (IncidentFormUiEvent) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (isError) MaterialTheme.colorScheme.error else Color.Transparent,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.photos_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.photos_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (isError) {
+            Text(
+                text = stringResource(R.string.required_photos_error),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onChoosePhotos,
+                modifier = Modifier.reportFocus(RequiredIncidentField.PHOTOS, onEvent),
+                enabled = uiState.canEdit,
+            ) {
+                Text(stringResource(R.string.choose_photos))
+            }
+            OutlinedButton(
+                onClick = onTakePhoto,
+                modifier = Modifier.reportFocus(RequiredIncidentField.PHOTOS, onEvent),
+                enabled = uiState.canEdit,
+            ) {
+                Text(stringResource(R.string.take_photo))
+            }
+        }
+        if (uiState.photos.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.photos_selected, uiState.photos.size),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                itemsIndexed(uiState.photos) { index, photo ->
+                    Column {
+                        IncidentPhotoThumbnail(uri = photo.displayUri, index = index, modifier = Modifier.size(96.dp))
+                        TextButton(
+                            onClick = { onEvent(IncidentFormUiEvent.PhotoRemoved(photo)) },
+                            enabled = uiState.canEdit,
+                        ) {
+                            Text(stringResource(R.string.remove_photo))
+                        }
+                    }
+                }
+            }
+            TextButton(onClick = { onEvent(IncidentFormUiEvent.PhotosRemoved) }, enabled = uiState.canEdit) {
+                Text(stringResource(R.string.remove_photos))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubmittingDialog() {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+    ) {
+        Surface(shape = MaterialTheme.shapes.large) {
+            LoadingContent(Modifier.padding(24.dp), message = stringResource(R.string.submitting_incident))
+        }
+    }
+}
+
+private fun Modifier.reportFocus(field: RequiredIncidentField, onEvent: (IncidentFormUiEvent) -> Unit) =
+    onFocusChanged { onEvent(IncidentFormUiEvent.FieldFocusChanged(field, it.isFocused)) }
 
 @Preview(name = "New incident form", showBackground = true)
 @Composable
-private fun NewIncidentFormScreenPreview() {
+private fun NewIncidentFormPreview() {
     FieldIncidentReporterTheme {
-        IncidentFormScreen(
-            uiState = IncidentFormUiStateReducer.reduce(
-                IncidentFormUiState(),
-                IncidentFormStateChange.Initialized(null),
-            ),
+        IncidentFormContent(
+            uiState = IncidentFormUiState(),
             onBack = {},
             onChoosePhotos = {},
             onTakePhoto = {},
@@ -294,12 +299,14 @@ private fun NewIncidentFormScreenPreview() {
 
 @Preview(name = "Edit incident form", showBackground = true)
 @Composable
-private fun EditIncidentFormScreenPreview() {
+private fun EditIncidentFormPreview() {
     FieldIncidentReporterTheme {
-        IncidentFormScreen(
-            uiState = IncidentFormUiStateReducer.reduce(
-                IncidentFormUiState(),
-                IncidentFormStateChange.Initialized(PreviewIncident),
+        IncidentFormContent(
+            uiState = IncidentFormUiState(
+                incidentId = "preview-hydraulic-press",
+                title = "Hydraulic press is not responding",
+                location = "Workshop · Bay 3",
+                description = "The control panel does not respond when the machine is switched on.",
             ),
             onBack = {},
             onChoosePhotos = {},

@@ -5,18 +5,16 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import javax.inject.Inject
 
-class CreateIncidentUseCase @Inject constructor(
+/** Creates a report when [id] is null, otherwise updates it and removes [deletePhotoIds]. */
+class SaveIncidentUseCase @Inject constructor(
     private val repository: IncidentRepository,
 ) {
-    suspend operator fun invoke(
-        draft: IncidentDraft,
-    ): Incident {
+    suspend operator fun invoke(id: String?, draft: IncidentDraft, deletePhotoIds: List<String>): Incident {
         val normalized = draft.normalized()
-        return repository.create(
-            normalized.title,
-            normalized.location,
-            normalized.description,
-            normalized.photos,
-        )
+        return if (id == null) {
+            repository.create(normalized)
+        } else {
+            repository.update(id, normalized, deletePhotoIds)
+        }
     }
 }

@@ -15,3 +15,17 @@ internal data class IncidentPhotoDto(
     val url: String,
     val thumbnailUrl: String,
 )
+
+internal data class IncidentPageDto(
+    val items: List<IncidentDto>,
+    val page: Int,
+    val size: Int,
+    val hasNext: Boolean,
+)
+
+internal data class IncidentBody(
+    val title: String,
+    val location: String,
+    val description: String,
+    val deletePhotoIds: List<String>? = null,
+)

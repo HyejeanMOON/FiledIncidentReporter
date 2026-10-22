@@ -4,37 +4,32 @@ import com.google.gson.Gson
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentDto
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentPageDto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
-import retrofit2.Retrofit
 
 class IncidentMapperTest {
     private val gson = Gson()
-    private val photoUrlResolver = RetrofitIncidentPhotoUrlResolver(
-        Retrofit.Builder().baseUrl("http://example.test/").build(),
-    )
+    private val baseUrl = "http://example.test/api/".toHttpUrl()
 
     @Test
-    fun `list previews and detail photos use the full image URL`() {
+    fun `list and detail photos resolve the full image URL against the api origin`() {
         val page = gson.fromJson(
-            """{"items":[{"id":"1","title":"Leak","location":"Bay","description":"Pipe","createdAt":"2026-10-20T09:00:00Z","updatedAt":"2026-10-21T11:30:00Z","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}],"page":0,"size":20,"hasNext":false}""",
+            """{"items":[$IncidentJson],"page":0,"size":20,"hasNext":false}""",
             IncidentPageDto::class.java,
-        )
-        val summary = page.items.single().toSummary(photoUrlResolver)
-        assertEquals(listOf("http://example.test/incidents/1/photos/photo-1"), summary.photoPreviews)
-        assertEquals(Instant.parse("2026-10-20T09:00:00Z"), summary.createdAt)
-        assertEquals(Instant.parse("2026-10-21T11:30:00Z"), summary.updatedAt)
+        ).toIncidentPage(baseUrl)
+        val detail = gson.fromJson(IncidentJson, IncidentDto::class.java).toIncident(baseUrl)
 
-        val detail = gson.fromJson(
-            """{"id":"1","title":"Leak","location":"Bay","description":"Pipe","createdAt":"2026-10-20T09:00:00Z","updatedAt":"2026-10-21T11:30:00Z","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}""",
-            IncidentDto::class.java,
-        ).toIncident(photoUrlResolver)
-        assertEquals(
-            listOf(IncidentPhoto.Stored("photo-1", "http://example.test/incidents/1/photos/photo-1")),
-            detail.photos,
-        )
-        assertEquals(summary.createdAt, detail.createdAt)
-        assertEquals(summary.updatedAt, detail.updatedAt)
+        val expectedPhoto = IncidentPhoto.Stored("photo-1", "http://example.test/incidents/1/photos/photo-1")
+        assertEquals(listOf(expectedPhoto), page.items.single().photos)
+        assertEquals(page.items.single(), detail)
+        assertEquals(Instant.parse("2026-10-20T09:00:00Z"), detail.createdAt)
+        assertEquals(true, detail.isEdited)
+    }
+
+    private companion object {
+        const val IncidentJson =
+            """{"id":"1","title":"Leak","location":"Bay","description":"Pipe","createdAt":"2026-10-20T09:00:00Z","updatedAt":"2026-10-21T11:30:00Z","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}"""
     }
 }

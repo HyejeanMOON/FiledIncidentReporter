@@ -1,22 +1,24 @@
 package com.hyejeanmoon.fieldincidentreporter.data.remote
 
 import com.google.gson.JsonParser
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentRepositoryException
 import retrofit2.HttpException
 import java.io.IOException
 
+/** Runs an API call and translates transport and HTTP errors into [IncidentException]. */
 internal suspend fun <T> incidentRequest(block: suspend () -> T): T = try {
     block()
 } catch (error: IOException) {
-    throw IncidentRepositoryException(
+    throw IncidentException(
         if (error is PhotoReadException) IncidentFailure.PHOTO else IncidentFailure.NETWORK,
         error,
     )
 } catch (error: HttpException) {
-    throw IncidentRepositoryException(error.toIncidentFailure(), error)
+    throw IncidentException(error.toIncidentFailure(), error)
 }
 
+/** Reads the stable `code` of an RFC 9457 Problem Details body, falling back to the HTTP status. */
 internal fun HttpException.toIncidentFailure(): IncidentFailure {
     val code = runCatching {
         response()?.errorBody()?.charStream()?.use { reader ->

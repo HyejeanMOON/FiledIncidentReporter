@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
-import com.hyejeanmoon.fieldincidentreporter.feature.IncidentApp
+import com.hyejeanmoon.fieldincidentreporter.navigation.IncidentNavHost
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
                 ) {
-                    IncidentApp()
+                    IncidentNavHost()
                 }
             }
         }
