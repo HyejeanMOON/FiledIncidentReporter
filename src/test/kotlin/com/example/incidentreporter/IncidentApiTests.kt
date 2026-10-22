@@ -252,6 +252,32 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun `failed second photo leaves no new file or incident`() {
+        val photoDirectory = Path.of("target/test-photos")
+        Files.createDirectories(photoDirectory)
+        fun filenames(): Set<String> = Files.list(photoDirectory).use { paths ->
+            paths.map { it.fileName.toString() }.toList().toSet()
+        }
+        val beforeFiles = filenames()
+        val beforeIncidents = jdbc.sql("SELECT COUNT(*) FROM incidents").query(Int::class.java).single()
+        val metadata = MockMultipartFile(
+            "incident", "", MediaType.APPLICATION_JSON_VALUE,
+            """{"title":"Invalid photos","location":"Plant","description":"Details"}""".toByteArray(),
+        )
+
+        mvc.perform(multipart("/incidents")
+            .file(metadata)
+            .file(MockMultipartFile("photos", "first.jpg", "image/jpeg", "first".toByteArray()))
+            .file(MockMultipartFile("photos", "second.txt", "text/plain", "second".toByteArray())))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+
+        assertEquals(beforeFiles, filenames())
+        assertEquals(beforeIncidents, jdbc.sql("SELECT COUNT(*) FROM incidents").query(Int::class.java).single())
+    }
+
+    @Test
     fun `malformed request has a stable error code`() {
         val metadata = MockMultipartFile("incident", "", MediaType.APPLICATION_JSON_VALUE, "{".toByteArray())
         mvc.perform(multipart("/incidents").file(metadata))

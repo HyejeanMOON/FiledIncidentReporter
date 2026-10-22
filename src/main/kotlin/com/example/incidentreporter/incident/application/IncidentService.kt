@@ -36,11 +36,7 @@ class IncidentService(
     fun delete(id: String) {
         val incident = repository.findById(id) ?: throw IncidentNotFoundException()
         if (!repository.delete(id)) throw IncidentNotFoundException()
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() {
-                incident.photos.forEach { photoStore.delete(it.uri) }
-            }
-        })
+        cleanupPhotosAfterTransaction(removed = incident.photos)
     }
 
     @Transactional
@@ -55,27 +51,16 @@ class IncidentService(
         val retained = existing.photos.filterNot { it.id in deletedIds }
         if (retained.size + photos.size !in 1..20) throw InvalidIncidentException("An incident needs 1 to 20 photos")
 
-        val stored = mutableListOf<IncidentPhoto>()
-        try {
-            photos.forEach { stored += IncidentPhoto(UUID.randomUUID().toString(), photoStore.save(it)) }
-            val now = Instant.now()
-            val incident = Incident(
-                id, valid.title, valid.location, valid.description, retained + stored,
-                existing.createdAt, now,
-            )
-            if (!repository.update(incident)) throw IncidentNotFoundException()
-            val removed = existing.photos.filter { it.id in deletedIds }
-            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-                override fun afterCompletion(status: Int) {
-                    if (status == TransactionSynchronization.STATUS_COMMITTED) removed.forEach { photoStore.delete(it.uri) }
-                    else stored.forEach { photoStore.delete(it.uri) }
-                }
-            })
-            return incident
-        } catch (error: Exception) {
-            stored.forEach { photoStore.delete(it.uri) }
-            throw error
-        }
+        val stored = savePhotos(photos)
+        val removed = existing.photos.filter { it.id in deletedIds }
+        cleanupPhotosAfterTransaction(added = stored, removed = removed)
+        val now = Instant.now()
+        val incident = Incident(
+            id, valid.title, valid.location, valid.description, retained + stored,
+            existing.createdAt, now,
+        )
+        if (!repository.update(incident)) throw IncidentNotFoundException()
+        return incident
     }
 
     @Transactional(readOnly = true)
@@ -90,29 +75,42 @@ class IncidentService(
     fun create(input: IncidentInput, photos: List<IncomingPhoto>): Incident {
         val valid = input.validated()
         if (photos.size !in 1..20) throw InvalidIncidentException("An incident needs 1 to 20 photos")
+        val stored = savePhotos(photos)
+        cleanupPhotosAfterTransaction(added = stored)
+        val now = Instant.now()
+        val incident = Incident(
+            id = UUID.randomUUID().toString(),
+            title = valid.title,
+            location = valid.location,
+            description = valid.description,
+            photos = stored,
+            createdAt = now,
+            updatedAt = now,
+        )
+        repository.insert(incident)
+        return incident
+    }
+
+    private fun savePhotos(photos: List<IncomingPhoto>): List<IncidentPhoto> {
         val stored = mutableListOf<IncidentPhoto>()
         try {
             photos.forEach { stored += IncidentPhoto(UUID.randomUUID().toString(), photoStore.save(it)) }
-            val now = Instant.now()
-            val incident = Incident(
-                id = UUID.randomUUID().toString(),
-                title = valid.title,
-                location = valid.location,
-                description = valid.description,
-                photos = stored.toList(),
-                createdAt = now,
-                updatedAt = now,
-            )
-            repository.insert(incident)
-            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-                override fun afterCompletion(status: Int) {
-                    if (status != TransactionSynchronization.STATUS_COMMITTED) stored.forEach { photoStore.delete(it.uri) }
-                }
-            })
-            return incident
+            return stored
         } catch (error: Exception) {
             stored.forEach { photoStore.delete(it.uri) }
             throw error
         }
+    }
+
+    private fun cleanupPhotosAfterTransaction(
+        added: List<IncidentPhoto> = emptyList(),
+        removed: List<IncidentPhoto> = emptyList(),
+    ) {
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCompletion(status: Int) {
+                val photos = if (status == TransactionSynchronization.STATUS_COMMITTED) removed else added
+                photos.forEach { photoStore.delete(it.uri) }
+            }
+        })
     }
 }

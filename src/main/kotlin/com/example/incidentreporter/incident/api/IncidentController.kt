@@ -37,6 +37,8 @@ data class IncidentUpdateBody(
     fun toInput() = IncidentInput(title, location, description)
 }
 
+private fun MultipartFile.toIncomingPhoto() = IncomingPhoto(contentType, size, this::getInputStream)
+
 data class PhotoResponse(val id: String, val url: String, val thumbnailUrl: String)
 
 private fun IncidentPhoto.toResponse(incidentId: String): PhotoResponse {
@@ -57,20 +59,10 @@ data class IncidentResponse(
 fun Incident.toResponse() = IncidentResponse(id, title, location, description, photos.map { it.toResponse(id) }, createdAt, updatedAt)
 
 data class IncidentPageResponse(
-    val items: List<IncidentListItemResponse>,
+    val items: List<IncidentResponse>,
     val page: Int,
     val size: Int,
     val hasNext: Boolean,
-)
-
-data class IncidentListItemResponse(
-    val id: String,
-    val title: String,
-    val location: String,
-    val description: String,
-    val photos: List<PhotoResponse>,
-    val createdAt: Instant,
-    val updatedAt: Instant,
 )
 
 @RestController
@@ -92,7 +84,7 @@ class IncidentController(private val service: IncidentService) {
         id,
         body.toInput(),
         body.deletePhotoIds,
-        photos.orEmpty().map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
+        photos.orEmpty().map(MultipartFile::toIncomingPhoto),
     ).toResponse()
 
     @GetMapping
@@ -102,17 +94,7 @@ class IncidentController(private val service: IncidentService) {
     ): IncidentPageResponse {
         val result = service.list(page, size)
         return IncidentPageResponse(
-            result.items.map { incident ->
-                IncidentListItemResponse(
-                    incident.id,
-                    incident.title,
-                    incident.location,
-                    incident.description,
-                    incident.photos.map { it.toResponse(incident.id) },
-                    incident.createdAt,
-                    incident.updatedAt,
-                )
-            },
+            result.items.map(Incident::toResponse),
             result.page,
             result.size,
             result.hasNext,
@@ -126,6 +108,6 @@ class IncidentController(private val service: IncidentService) {
         @RequestPart("photos") photos: List<MultipartFile>,
     ): IncidentResponse = service.create(
         body.toInput(),
-        photos.map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
+        photos.map(MultipartFile::toIncomingPhoto),
     ).toResponse()
 }

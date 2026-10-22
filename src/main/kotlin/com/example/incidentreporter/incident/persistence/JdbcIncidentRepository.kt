@@ -6,6 +6,7 @@ import com.example.incidentreporter.incident.domain.IncidentRepository
 import com.example.incidentreporter.incident.domain.IncidentPage
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -14,14 +15,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
     override fun findById(id: String): Incident? {
         val incident = jdbc.sql("SELECT id, title, location, description, created_at, updated_at FROM incidents WHERE id = :id")
             .param("id", id)
-            .query { rs, _ ->
-                Incident(
-                    rs.getString("id"), rs.getString("title"), rs.getString("location"), rs.getString("description"),
-                    emptyList(),
-                    rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
-                    rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
-                )
-            }
+            .query { rs, _ -> mapIncident(rs) }
             .optional()
             .orElse(null) ?: return null
         val photos = jdbc.sql("SELECT photo_id, photo_uri FROM incident_photos WHERE incident_id = :id ORDER BY position")
@@ -51,14 +45,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         jdbc.sql("DELETE FROM incident_photos WHERE incident_id = :id")
             .param("id", incident.id)
             .update()
-        incident.photos.forEachIndexed { position, photo ->
-            jdbc.sql("INSERT INTO incident_photos (incident_id, position, photo_id, photo_uri) VALUES (:id, :position, :photoId, :uri)")
-                .param("id", incident.id)
-                .param("position", position)
-                .param("photoId", photo.id)
-                .param("uri", photo.uri)
-                .update()
-        }
+        insertPhotos(incident)
         return true
     }
 
@@ -69,17 +56,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         )
             .param("limit", size + 1)
             .param("offset", page.toLong() * size)
-            .query { rs, _ ->
-                Incident(
-                    id = rs.getString("id"),
-                    title = rs.getString("title"),
-                    location = rs.getString("location"),
-                    description = rs.getString("description"),
-                    photos = emptyList(),
-                    createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
-                    updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
-                )
-            }
+            .query { rs, _ -> mapIncident(rs) }
             .list()
         val pageRows = rows.take(size)
         if (pageRows.isEmpty()) return IncidentPage(emptyList(), page, size, false)
@@ -106,6 +83,10 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .param("updatedAt", OffsetDateTime.ofInstant(incident.updatedAt, ZoneOffset.UTC))
             .update()
 
+        insertPhotos(incident)
+    }
+
+    private fun insertPhotos(incident: Incident) {
         incident.photos.forEachIndexed { position, photo ->
             jdbc.sql("INSERT INTO incident_photos (incident_id, position, photo_id, photo_uri) VALUES (:id, :position, :photoId, :uri)")
                 .param("id", incident.id)
@@ -115,4 +96,14 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
                 .update()
         }
     }
+
+    private fun mapIncident(rs: ResultSet) = Incident(
+        id = rs.getString("id"),
+        title = rs.getString("title"),
+        location = rs.getString("location"),
+        description = rs.getString("description"),
+        photos = emptyList(),
+        createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+        updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
+    )
 }
