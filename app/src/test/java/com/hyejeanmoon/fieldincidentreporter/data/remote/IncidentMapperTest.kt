@@ -15,13 +15,13 @@ class IncidentMapperTest {
     )
 
     @Test
-    fun `list thumbnails and detail photos resolve separately from photo ids`() {
+    fun `list previews and detail photos use the full image URL`() {
         val page = gson.fromJson(
             """{"items":[{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}],"page":0,"size":20,"hasNext":false}""",
             IncidentPageDto::class.java,
         )
         val summary = page.items.single().toSummary(photoUrlResolver)
-        assertEquals(listOf("http://example.test/incidents/1/photos/photo-1/thumbnail"), summary.photoPreviews)
+        assertEquals(listOf("http://example.test/incidents/1/photos/photo-1"), summary.photoPreviews)
 
         val detail = gson.fromJson(
             """{"id":"1","title":"Leak","location":"Bay","description":"Pipe","photos":[{"id":"photo-1","url":"/incidents/1/photos/photo-1","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"}]}""",

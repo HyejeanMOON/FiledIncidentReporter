@@ -21,5 +21,5 @@ internal fun IncidentListItemDto.toSummary(photoUrlResolver: RetrofitIncidentPho
     title = title,
     location = location,
     description = description,
-    photoPreviews = photos.map { photoUrlResolver.resolve(it.thumbnailUrl) },
+    photoPreviews = photos.map { photoUrlResolver.resolve(it.url) },
 )
