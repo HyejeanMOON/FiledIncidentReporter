@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import com.jayway.jsonpath.JsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -244,10 +245,7 @@ class IncidentApiTests @Autowired constructor(
         graphics.fillRect(0, image.height / 2, image.width, image.height / 2)
         graphics.dispose()
         val original = ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray()
-        val metadata = MockMultipartFile(
-            "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"title":"Image","location":"Plant","description":"Details"}""".toByteArray(),
-        )
+        val metadata = incidentPart("""{"title":"Image","location":"Plant","description":"Details"}""")
         mvc.perform(multipart("/incidents").file(metadata).file(MockMultipartFile("photos", "image.png", "image/png", original)))
             .andExpect(status().isCreated)
 
@@ -304,7 +302,7 @@ class IncidentApiTests @Autowired constructor(
         val uri = JsonPath.read<String>(created, "$.photos[0].url")
         mvc.perform(get(uri))
             .andExpect(status().isOk)
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes("one".toByteArray()))
+            .andExpect(content().bytes("one".toByteArray()))
         mvc.perform(get("/incidents/$id/photos/missing")).andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
     }
@@ -325,14 +323,11 @@ class IncidentApiTests @Autowired constructor(
         }
         val beforeFiles = filenames()
         val beforeIncidents = jdbc.sql("SELECT COUNT(*) FROM incidents").query(Int::class.java).single()
-        val metadata = MockMultipartFile(
-            "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"title":"Invalid photos","location":"Plant","description":"Details"}""".toByteArray(),
-        )
+        val metadata = incidentPart("""{"title":"Invalid photos","location":"Plant","description":"Details"}""")
 
         mvc.perform(multipart("/incidents")
             .file(metadata)
-            .file(MockMultipartFile("photos", "first.jpg", "image/jpeg", "first".toByteArray()))
+            .file(jpegPart("first"))
             .file(MockMultipartFile("photos", "second.txt", "text/plain", "second".toByteArray())))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
@@ -343,7 +338,7 @@ class IncidentApiTests @Autowired constructor(
 
     @Test
     fun `malformed request has a stable error code`() {
-        val metadata = MockMultipartFile("incident", "", MediaType.APPLICATION_JSON_VALUE, "{".toByteArray())
+        val metadata = incidentPart("{")
         mvc.perform(multipart("/incidents").file(metadata))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
@@ -356,13 +351,10 @@ class IncidentApiTests @Autowired constructor(
         location: String = "Plant",
         description: String = "Details",
     ): ResultActions {
-        val metadata = MockMultipartFile(
-            "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"title":"$title","location":"$location","description":"$description"}""".toByteArray(),
-        )
+        val metadata = incidentPart("""{"title":"$title","location":"$location","description":"$description"}""")
         val request = multipart("/incidents").file(metadata)
         photos.forEach { photo ->
-            request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
+            request.file(jpegPart(photo))
         }
         return mvc.perform(request)
     }
@@ -375,14 +367,16 @@ class IncidentApiTests @Autowired constructor(
 
     private fun update(id: String, deleted: List<String> = emptyList(), photos: List<String> = emptyList()): ResultActions {
         val deletedJson = deleted.joinToString(",", "[", "]") { "\"$it\"" }
-        val metadata = MockMultipartFile(
-            "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"title":"New","location":"Shop","description":"New details","deletePhotoIds":$deletedJson}""".toByteArray(),
-        )
+        val metadata = incidentPart("""{"title":"New","location":"Shop","description":"New details","deletePhotoIds":$deletedJson}""")
         val request = multipart("/incidents/$id").file(metadata).with { it.apply { method = "PATCH" } }
         photos.forEach { photo ->
-            request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
+            request.file(jpegPart(photo))
         }
         return mvc.perform(request)
     }
+
+    private fun incidentPart(json: String) =
+        MockMultipartFile("incident", "", MediaType.APPLICATION_JSON_VALUE, json.toByteArray())
+
+    private fun jpegPart(content: String) = MockMultipartFile("photos", "$content.jpg", "image/jpeg", content.toByteArray())
 }
