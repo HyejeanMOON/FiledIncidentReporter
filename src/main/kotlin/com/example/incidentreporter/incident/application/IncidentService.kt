@@ -2,13 +2,13 @@ package com.example.incidentreporter.incident.application
 
 import com.example.incidentreporter.incident.domain.Incident
 import com.example.incidentreporter.incident.domain.IncidentInput
+import com.example.incidentreporter.incident.domain.IncidentNotFoundException
+import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
 import com.example.incidentreporter.incident.domain.IncidentRepository
-import com.example.incidentreporter.incident.domain.IncidentPage
-import com.example.incidentreporter.incident.domain.InvalidIncidentException
-import com.example.incidentreporter.incident.domain.IncidentNotFoundException
-import com.example.incidentreporter.incident.domain.PhotoNotFoundException
 import com.example.incidentreporter.incident.domain.IncomingPhoto
+import com.example.incidentreporter.incident.domain.InvalidIncidentException
+import com.example.incidentreporter.incident.domain.PhotoNotFoundException
 import com.example.incidentreporter.incident.domain.PhotoStore
 import com.example.incidentreporter.incident.domain.StoredPhoto
 import org.springframework.stereotype.Service
@@ -24,43 +24,40 @@ class IncidentService(
     private val photoStore: PhotoStore,
 ) {
     @Transactional(readOnly = true)
-    fun get(id: String): Incident = repository.findById(id) ?: throw IncidentNotFoundException()
+    fun get(id: String): Incident = findExisting(id)
 
     @Transactional(readOnly = true)
     fun getPhoto(incidentId: String, photoId: String): StoredPhoto {
-        val photo = get(incidentId).photos.firstOrNull { it.id == photoId } ?: throw PhotoNotFoundException()
+        val photo = findExisting(incidentId).photos.firstOrNull { it.id == photoId } ?: throw PhotoNotFoundException()
         return photoStore.load(photo.uri) ?: throw PhotoNotFoundException()
     }
 
     @Transactional
     fun delete(id: String) {
-        val incident = repository.findById(id) ?: throw IncidentNotFoundException()
+        val incident = findExisting(id)
         if (!repository.delete(id)) throw IncidentNotFoundException()
         cleanupPhotosAfterTransaction(removed = incident.photos)
     }
 
     @Transactional
     fun update(id: String, input: IncidentInput, deletePhotoIds: List<String>, photos: List<IncomingPhoto>): Incident {
-        val existing = repository.findById(id) ?: throw IncidentNotFoundException()
+        val existing = findExisting(id)
         val valid = input.validated()
-        val existingIds = existing.photos.map(IncidentPhoto::id).toSet()
-        if (deletePhotoIds.size != deletePhotoIds.toSet().size || !existingIds.containsAll(deletePhotoIds)) {
+        val deletedIds = deletePhotoIds.toSet()
+        if (deletePhotoIds.size != deletedIds.size || !existing.photos.map(IncidentPhoto::id).containsAll(deletedIds)) {
             throw InvalidIncidentException("deletePhotoIds must belong to this incident and must not repeat")
         }
-        val deletedIds = deletePhotoIds.toSet()
-        val retained = existing.photos.filterNot { it.id in deletedIds }
-        if (retained.size + photos.size !in 1..20) throw InvalidIncidentException("An incident needs 1 to 20 photos")
+        val (removed, retained) = existing.photos.partition { it.id in deletedIds }
+        Incident.requireValidPhotoCount(retained.size + photos.size)
 
         val stored = savePhotos(photos)
-        val removed = existing.photos.filter { it.id in deletedIds }
         cleanupPhotosAfterTransaction(added = stored, removed = removed)
-        val now = Instant.now()
         val incident = existing.copy(
             title = valid.title,
             location = valid.location,
             description = valid.description,
             photos = retained + stored,
-            updatedAt = now,
+            updatedAt = Instant.now(),
         )
         if (!repository.update(incident)) throw IncidentNotFoundException()
         return incident
@@ -68,12 +65,12 @@ class IncidentService(
 
     @Transactional(readOnly = true)
     fun list(page: Int, size: Int, query: String?, resolved: Boolean?): IncidentPage {
-        if (page < 0 || size !in 1..100) {
-            throw InvalidIncidentException("page must be nonnegative and size must be between 1 and 100")
+        if (page < 0 || size !in 1..MAX_PAGE_SIZE) {
+            throw InvalidIncidentException("page must be nonnegative and size must be between 1 and $MAX_PAGE_SIZE")
         }
         val normalizedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
-        if (normalizedQuery != null && normalizedQuery.length > 200) {
-            throw InvalidIncidentException("q must contain at most 200 characters")
+        if (normalizedQuery != null && normalizedQuery.length > MAX_QUERY_LENGTH) {
+            throw InvalidIncidentException("q must contain at most $MAX_QUERY_LENGTH characters")
         }
         return repository.findPage(page, size, normalizedQuery, resolved)
     }
@@ -81,13 +78,13 @@ class IncidentService(
     @Transactional
     fun setResolved(id: String, resolved: Boolean): Incident {
         repository.setResolved(id, resolved, Instant.now())
-        return repository.findById(id) ?: throw IncidentNotFoundException()
+        return findExisting(id)
     }
 
     @Transactional
     fun create(input: IncidentInput, photos: List<IncomingPhoto>): Incident {
         val valid = input.validated()
-        if (photos.size !in 1..20) throw InvalidIncidentException("An incident needs 1 to 20 photos")
+        Incident.requireValidPhotoCount(photos.size)
         val stored = savePhotos(photos)
         cleanupPhotosAfterTransaction(added = stored)
         val now = Instant.now()
@@ -104,6 +101,8 @@ class IncidentService(
         return incident
     }
 
+    private fun findExisting(id: String): Incident = repository.findById(id) ?: throw IncidentNotFoundException()
+
     private fun savePhotos(photos: List<IncomingPhoto>): List<IncidentPhoto> {
         val stored = mutableListOf<IncidentPhoto>()
         try {
@@ -115,6 +114,7 @@ class IncidentService(
         }
     }
 
+    /** Deletes [removed] files once the transaction commits, or the newly [added] files if it rolls back. */
     private fun cleanupPhotosAfterTransaction(
         added: List<IncidentPhoto> = emptyList(),
         removed: List<IncidentPhoto> = emptyList(),
@@ -125,5 +125,10 @@ class IncidentService(
                 photos.forEach { photoStore.delete(it.uri) }
             }
         })
+    }
+
+    private companion object {
+        const val MAX_PAGE_SIZE = 100
+        const val MAX_QUERY_LENGTH = 200
     }
 }
