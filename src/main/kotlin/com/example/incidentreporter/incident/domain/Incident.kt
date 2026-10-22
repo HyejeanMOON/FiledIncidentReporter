@@ -1,20 +1,21 @@
 package com.example.incidentreporter.incident.domain
 
+data class IncidentPhoto(val id: String, val uri: String)
+
 data class Incident(
     val id: String,
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String>,
+    val photos: List<IncidentPhoto>,
 )
 
 data class IncidentInput(
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String>,
 ) {
-    fun validated(requirePhotos: Boolean = true): IncidentInput {
+    fun validated(): IncidentInput {
         val normalized = copy(
             title = title.trim(),
             location = location.trim(),
@@ -29,13 +30,10 @@ data class IncidentInput(
         if (normalized.description.isEmpty() || normalized.description.length > 4000) {
             throw InvalidIncidentException("description must contain 1 to 4000 characters")
         }
-        if ((requirePhotos && photoUris.isEmpty()) || photoUris.size > 20 || photoUris.any { it.isBlank() || it.length > 2048 }) {
-            throw InvalidIncidentException("photoUris must contain 1 to 20 non-blank values of at most 2048 characters")
-        }
         return normalized
     }
 }
 
 class InvalidIncidentException(message: String) : RuntimeException(message)
-
 class IncidentNotFoundException : RuntimeException("Incident not found")
+class PhotoNotFoundException : RuntimeException("Photo not found")

@@ -1,26 +1,26 @@
 package com.example.incidentreporter.incident.api
 
-import com.example.incidentreporter.incident.domain.PhotoStore
+import com.example.incidentreporter.incident.domain.StoredPhoto
 import org.springframework.stereotype.Component
 import java.awt.Color
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.util.Base64
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 
+data class PhotoPreview(val contentType: String, val bytes: ByteArray)
+
 @Component
-class PhotoPreviewEncoder(private val photoStore: PhotoStore) {
-    fun encode(uri: String): String {
-        val photo = photoStore.load(uri) ?: throw ResourceNotFoundException()
+class PhotoPreviewEncoder {
+    fun encode(photo: StoredPhoto): PhotoPreview {
         val bytes = photo.openStream().use { it.readBytes() }
         val image = (try {
             ImageIO.read(bytes.inputStream())
         } catch (_: IOException) {
             null
-        }) ?: return dataUri(photo.contentType, bytes)
+        }) ?: return PhotoPreview(photo.contentType, bytes)
 
         val scale = minOf(1.0, 512.0 / maxOf(image.width, image.height))
         val width = maxOf(1, (image.width * scale).toInt())
@@ -31,7 +31,7 @@ class PhotoPreviewEncoder(private val photoStore: PhotoStore) {
             graphics.color = Color.WHITE
             graphics.fillRect(0, 0, width, height)
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            graphics.drawImage(image, 0, 0, width, height, null)
+            graphics.drawImage(image, 0, 0, null)
         } finally {
             graphics.dispose()
         }
@@ -50,9 +50,6 @@ class PhotoPreviewEncoder(private val photoStore: PhotoStore) {
         } finally {
             writer.dispose()
         }
-        return dataUri("image/jpeg", output.toByteArray())
+        return PhotoPreview("image/jpeg", output.toByteArray())
     }
-
-    private fun dataUri(contentType: String, bytes: ByteArray): String =
-        "data:$contentType;base64,${Base64.getEncoder().encodeToString(bytes)}"
 }

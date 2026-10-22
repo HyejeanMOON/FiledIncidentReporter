@@ -3,11 +3,11 @@ package com.example.incidentreporter.incident.api
 import com.example.incidentreporter.incident.application.IncidentService
 import com.example.incidentreporter.incident.domain.Incident
 import com.example.incidentreporter.incident.domain.IncidentInput
-import com.example.incidentreporter.incident.domain.InvalidIncidentException
+import com.example.incidentreporter.incident.domain.IncidentPhoto
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
@@ -24,17 +24,23 @@ data class IncidentBody(
     val location: String,
     val description: String,
 ) {
-    fun toInput() = IncidentInput(title, location, description, emptyList())
+    fun toInput() = IncidentInput(title, location, description)
 }
 
 data class IncidentUpdateBody(
-    val id: String,
     val title: String,
     val location: String,
     val description: String,
-    val retainedPhotoUris: List<String>,
+    val deletePhotoIds: List<String> = emptyList(),
 ) {
-    fun toInput() = IncidentInput(title, location, description, retainedPhotoUris)
+    fun toInput() = IncidentInput(title, location, description)
+}
+
+data class PhotoResponse(val id: String, val url: String, val thumbnailUrl: String)
+
+private fun IncidentPhoto.toResponse(incidentId: String): PhotoResponse {
+    val url = "/incidents/$incidentId/photos/$id"
+    return PhotoResponse(id, url, "$url/thumbnail")
 }
 
 data class IncidentResponse(
@@ -42,10 +48,10 @@ data class IncidentResponse(
     val title: String,
     val location: String,
     val description: String,
-    val photoUris: List<String>,
+    val photos: List<PhotoResponse>,
 )
 
-fun Incident.toResponse() = IncidentResponse(id, title, location, description, photoUris)
+fun Incident.toResponse() = IncidentResponse(id, title, location, description, photos.map { it.toResponse(id) })
 
 data class IncidentPageResponse(
     val items: List<IncidentListItemResponse>,
@@ -59,15 +65,12 @@ data class IncidentListItemResponse(
     val title: String,
     val location: String,
     val description: String,
-    val photos: List<String>,
+    val photos: List<PhotoResponse>,
 )
 
 @RestController
 @RequestMapping("/incidents")
-class IncidentController(
-    private val service: IncidentService,
-    private val photoPreviewEncoder: PhotoPreviewEncoder,
-) {
+class IncidentController(private val service: IncidentService) {
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): IncidentResponse = service.get(id).toResponse()
 
@@ -75,19 +78,17 @@ class IncidentController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: String) = service.delete(id)
 
-    @PutMapping("/{id}", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PatchMapping("/{id}", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun update(
         @PathVariable id: String,
         @RequestPart("incident") body: IncidentUpdateBody,
         @RequestPart("photos", required = false) photos: List<MultipartFile>?,
-    ): IncidentResponse {
-        if (id != body.id) throw InvalidIncidentException("Body id must match path id")
-        return service.update(
-            id,
-            body.toInput(),
-            photos.orEmpty().map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
-        ).toResponse()
-    }
+    ): IncidentResponse = service.update(
+        id,
+        body.toInput(),
+        body.deletePhotoIds,
+        photos.orEmpty().map { photo -> IncomingPhoto(photo.contentType, photo.size, photo::getInputStream) },
+    ).toResponse()
 
     @GetMapping
     fun list(
@@ -102,7 +103,7 @@ class IncidentController(
                     incident.title,
                     incident.location,
                     incident.description,
-                    incident.photoUris.map(photoPreviewEncoder::encode),
+                    incident.photos.map { it.toResponse(incident.id) },
                 )
             },
             result.page,

@@ -24,7 +24,6 @@ import java.nio.file.Path
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
-import java.util.Base64
 import javax.imageio.ImageIO
 
 @SpringBootTest
@@ -38,12 +37,12 @@ class IncidentApiTests @Autowired constructor(
     fun `get incident by id includes its photos`() {
         val created = create("Find me").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
-        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
+        val photoId = JsonPath.read<String>(created, "$.photos[0].id")
 
         mvc.perform(get("/incidents/$id"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("Find me"))
-            .andExpect(jsonPath("$.photoUris[0]").value(photoUri))
+            .andExpect(jsonPath("$.photos[0].id").value(photoId))
         mvc.perform(get("/incidents/missing")).andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
     }
@@ -53,7 +52,8 @@ class IncidentApiTests @Autowired constructor(
     fun `delete removes incident and photos`() {
         val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
-        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
+        val photoUri = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id")
+            .param("id", id).query(String::class.java).single()
 
         mvc.perform(delete("/incidents/$id")).andExpect(status().isNoContent)
         val incidents = jdbc.sql("SELECT COUNT(*) FROM incidents WHERE id = :id")
@@ -75,15 +75,15 @@ class IncidentApiTests @Autowired constructor(
         update(id, photos = listOf("new"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("New"))
-            .andExpect(jsonPath("$.photoUris.length()").value(1))
+            .andExpect(jsonPath("$.photos.length()").value(2))
 
         val stored = jdbc.sql("SELECT title FROM incidents WHERE id = :id")
             .param("id", id).query(String::class.java).single()
         assertEquals("New", stored)
         val photos = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :id")
             .param("id", id).query(String::class.java).list()
-        assertEquals(1, photos.size)
-        assertTrue(requireNotNull(photos.single()).startsWith("/photos/"))
+        assertEquals(2, photos.size)
+        assertTrue(photos.all { requireNotNull(it).startsWith("/photos/") })
     }
 
     @Test
@@ -93,16 +93,47 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
-    fun `update retains only photos owned by the incident`() {
+    fun `update deletes only photos owned by the incident`() {
         val created = create("Old").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
-        val photoUri = JsonPath.read<String>(created, "$.photoUris[0]")
+        val photoId = JsonPath.read<String>(created, "$.photos[0].id")
 
-        update(id, retained = listOf(photoUri))
+        update(id, deleted = listOf(photoId), photos = listOf("replacement"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.photoUris[0]").value(photoUri))
-        update(id, retained = listOf("/photos/00000000-0000-0000-0000-000000000000.jpg"))
+            .andExpect(jsonPath("$.photos[0].id").exists())
+        update(id, deleted = listOf(photoId))
             .andExpect(status().isBadRequest)
+        update(id, deleted = listOf("00000000-0000-0000-0000-000000000000"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun `update removes selected old photos and appends new files`() {
+        val created = create("Mixed", listOf("A", "B", "C")).andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+        val firstId = JsonPath.read<String>(created, "$.photos[0].id")
+        val deletedId = JsonPath.read<String>(created, "$.photos[1].id")
+        val thirdId = JsonPath.read<String>(created, "$.photos[2].id")
+        val deletedUri = jdbc.sql("SELECT photo_uri FROM incident_photos WHERE incident_id = :incidentId AND photo_id = :photoId")
+            .param("incidentId", id).param("photoId", deletedId).query(String::class.java).single()
+
+        val updated = update(id, deleted = listOf(deletedId), photos = listOf("D", "E"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.photos.length()").value(4))
+            .andReturn().response.contentAsString
+
+        assertEquals(firstId, JsonPath.read<String>(updated, "$.photos[0].id"))
+        assertEquals(thirdId, JsonPath.read<String>(updated, "$.photos[1].id"))
+        val newIds = listOf(
+            JsonPath.read<String>(updated, "$.photos[2].id"),
+            JsonPath.read<String>(updated, "$.photos[3].id"),
+        )
+        assertTrue(newIds.none { it in setOf(firstId, deletedId, thirdId) })
+        mvc.perform(get("/incidents/$id/photos/$deletedId"))
+            .andExpect(status().isNotFound)
+        assertEquals(false, Files.exists(Path.of("target/test-photos").resolve(deletedUri.removePrefix("/photos/"))))
+        mvc.perform(delete("/incidents/$id")).andExpect(status().isNoContent)
     }
 
     @Test
@@ -121,11 +152,12 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].photos.length()").value(1))
             .andExpect(jsonPath("$.hasNext").value(false))
-        assertTrue(first.contains("data:image/jpeg;base64,"))
+        assertTrue(first.contains("/thumbnail"))
+        assertEquals(false, first.contains("base64,"))
     }
 
     @Test
-    fun `list includes resized compressed photo data`() {
+    fun `thumbnail endpoint returns resized compressed photo data`() {
         val image = BufferedImage(1200, 800, BufferedImage.TYPE_INT_RGB)
         val graphics = image.createGraphics()
         graphics.color = Color.RED
@@ -140,11 +172,11 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(status().isCreated)
 
         val response = mvc.perform(get("/incidents"))
+            .andExpect(status().isOk).andReturn().response.contentAsString
+        val thumbnailUrl = JsonPath.read<String>(response, "$.items[0].photos[0].thumbnailUrl")
+        val compressed = mvc.perform(get(thumbnailUrl))
             .andExpect(status().isOk)
-            .andReturn().response.contentAsString
-        val dataUri = JsonPath.read<String>(response, "$.items[0].photos[0]")
-        assertTrue(dataUri.startsWith("data:image/jpeg;base64,"))
-        val compressed = Base64.getDecoder().decode(dataUri.substringAfter(','))
+            .andReturn().response.contentAsByteArray
         assertTrue(compressed.size < original.size)
         val preview = ImageIO.read(compressed.inputStream())
         assertEquals(512, preview.width)
@@ -162,7 +194,7 @@ class IncidentApiTests @Autowired constructor(
         create("  Broken pump  ", listOf("one", "two"))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.title").value("Broken pump"))
-            .andExpect(jsonPath("$.photoUris.length()").value(2))
+            .andExpect(jsonPath("$.photos.length()").value(2))
 
         val saved = jdbc.sql("SELECT title FROM incidents").query(String::class.java).single()
         assertEquals("Broken pump", saved)
@@ -180,11 +212,12 @@ class IncidentApiTests @Autowired constructor(
     @Test
     fun `stored photo can be downloaded`() {
         val created = create("Photo test").andReturn().response.contentAsString
-        val uri = JsonPath.read<String>(created, "$.photoUris[0]")
+        val id = JsonPath.read<String>(created, "$.id")
+        val uri = JsonPath.read<String>(created, "$.photos[0].url")
         mvc.perform(get(uri))
             .andExpect(status().isOk)
             .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes("one".toByteArray()))
-        mvc.perform(get("/photos/missing.jpg")).andExpect(status().isNotFound)
+        mvc.perform(get("/incidents/$id/photos/missing")).andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
     }
 
@@ -215,13 +248,13 @@ class IncidentApiTests @Autowired constructor(
         return mvc.perform(request)
     }
 
-    private fun update(id: String, retained: List<String> = emptyList(), photos: List<String> = emptyList()): ResultActions {
-        val retainedJson = retained.joinToString(",", "[", "]") { "\"$it\"" }
+    private fun update(id: String, deleted: List<String> = emptyList(), photos: List<String> = emptyList()): ResultActions {
+        val deletedJson = deleted.joinToString(",", "[", "]") { "\"$it\"" }
         val metadata = MockMultipartFile(
             "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"id":"$id","title":"New","location":"Shop","description":"New details","retainedPhotoUris":$retainedJson}""".toByteArray(),
+            """{"title":"New","location":"Shop","description":"New details","deletePhotoIds":$deletedJson}""".toByteArray(),
         )
-        val request = multipart("/incidents/$id").file(metadata).with { it.apply { method = "PUT" } }
+        val request = multipart("/incidents/$id").file(metadata).with { it.apply { method = "PATCH" } }
         photos.forEach { photo ->
             request.file(MockMultipartFile("photos", "$photo.jpg", "image/jpeg", photo.toByteArray()))
         }

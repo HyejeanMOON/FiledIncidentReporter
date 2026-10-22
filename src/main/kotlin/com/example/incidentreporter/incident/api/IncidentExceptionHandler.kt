@@ -2,6 +2,7 @@ package com.example.incidentreporter.incident.api
 
 import com.example.incidentreporter.incident.domain.IncidentNotFoundException
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
+import com.example.incidentreporter.incident.domain.PhotoNotFoundException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
@@ -40,8 +41,8 @@ class IncidentExceptionHandler : ResponseEntityExceptionHandler() {
     fun invalidIncident(error: InvalidIncidentException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
         response(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_INCIDENT, error.message ?: "Invalid incident", request.requestURI)
 
-    @ExceptionHandler(ResourceNotFoundException::class)
-    fun resourceNotFound(error: ResourceNotFoundException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
+    @ExceptionHandler(ResourceNotFoundException::class, PhotoNotFoundException::class)
+    fun resourceNotFound(error: RuntimeException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =
         response(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, error.message ?: "Resource not found", request.requestURI)
 
     @ExceptionHandler(Exception::class)
