@@ -10,6 +10,7 @@ import com.hyejeanmoon.fieldincidentreporter.data.remote.toSummary
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentBody
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentUpdateBody
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPage
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
@@ -46,14 +47,14 @@ internal class RetrofitIncidentRepository @Inject constructor(
         ).toIncident(photoUrlResolver)
     }
 
-    override suspend fun update(incident: Incident, deletePhotoIds: List<String>) = incidentRequest {
-        val localPhotos = incident.photos.filterIsInstance<IncidentPhoto.Local>()
+    override suspend fun update(id: String, draft: IncidentDraft, deletePhotoIds: List<String>) = incidentRequest {
+        val localPhotos = draft.photos.filterIsInstance<IncidentPhoto.Local>()
         api.update(
-            incident.id,
+            id,
             IncidentUpdateBody(
-                incident.title,
-                incident.location,
-                incident.description,
+                draft.title,
+                draft.location,
+                draft.description,
                 deletePhotoIds,
             ),
             localPhotos.mapIndexed { index, photo -> photoPart(context, photo.uri, index) },

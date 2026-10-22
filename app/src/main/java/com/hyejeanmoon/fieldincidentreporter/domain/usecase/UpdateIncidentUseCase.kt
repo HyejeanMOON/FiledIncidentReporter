@@ -8,21 +8,6 @@ import javax.inject.Inject
 class UpdateIncidentUseCase @Inject constructor(
     private val repository: IncidentRepository,
 ) {
-    suspend operator fun invoke(incident: Incident, deletePhotoIds: List<String>): Incident {
-        val normalized = IncidentDraft(
-            title = incident.title,
-            location = incident.location,
-            description = incident.description,
-            photos = incident.photos,
-        ).normalized()
-        return repository.update(
-            incident.copy(
-                title = normalized.title,
-                location = normalized.location,
-                description = normalized.description,
-                photos = normalized.photos,
-            ),
-            deletePhotoIds,
-        )
-    }
+    suspend operator fun invoke(id: String, draft: IncidentDraft, deletePhotoIds: List<String>): Incident =
+        repository.update(id, draft.normalized(), deletePhotoIds)
 }

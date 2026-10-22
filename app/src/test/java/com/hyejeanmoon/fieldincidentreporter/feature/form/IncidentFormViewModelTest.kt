@@ -2,6 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import androidx.lifecycle.SavedStateHandle
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPage
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
@@ -11,6 +12,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.usecase.UpdateIncidentUseCas
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.Instant
 
 class IncidentFormViewModelTest {
     @Test
@@ -19,7 +21,7 @@ class IncidentFormViewModelTest {
         val second = IncidentPhoto.Stored("photo-B", "http://example.test/B")
         val loaded = IncidentFormUiStateReducer.reduce(
             IncidentFormUiState(),
-            IncidentFormStateChange.Initialized(Incident("incident-1", "Title", "Room", "Details", listOf(first, second))),
+            IncidentFormStateChange.Initialized(Incident("incident-1", "Title", "Room", "Details", listOf(first, second), time, time)),
         )
         val removed = IncidentFormUiStateReducer.reduce(loaded, IncidentFormStateChange.PhotoRemoved(second))
         val updated = IncidentFormUiStateReducer.reduce(
@@ -86,12 +88,14 @@ class IncidentFormViewModelTest {
         assertEquals(listOf("photo-1"), viewModel.uiState.value.deletedPhotoIds)
         assertEquals(listOf(IncidentPhoto.Local("content://photos/2")), viewModel.uiState.value.photos)
     }
+
+    private val time = Instant.parse("2026-10-20T09:00:00Z")
 }
 
 private class UnusedIncidentRepository : IncidentRepository {
     override suspend fun getIncidentsPage(page: Int, size: Int): IncidentPage = error("Not used")
     override suspend fun getIncident(id: String): Incident = error("Not used")
     override suspend fun create(title: String, location: String, description: String, photos: List<IncidentPhoto>): Incident = error("Not used")
-    override suspend fun update(incident: Incident, deletePhotoIds: List<String>): Incident = error("Not used")
+    override suspend fun update(id: String, draft: IncidentDraft, deletePhotoIds: List<String>): Incident = error("Not used")
     override suspend fun delete(id: String): Unit = error("Not used")
 }

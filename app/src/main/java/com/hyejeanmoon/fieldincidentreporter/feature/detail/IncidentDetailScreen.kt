@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.common.formatIncidentTime
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +88,10 @@ fun IncidentDetailScreen(
             )
             DetailField(label = stringResource(R.string.location_label), value = incident.location)
             DetailField(label = stringResource(R.string.description_label), value = incident.description)
+            DetailField(label = stringResource(R.string.created_at_label), value = formatIncidentTime(incident.createdAt))
+            if (incident.updatedAt != incident.createdAt) {
+                DetailField(label = stringResource(R.string.updated_at_label), value = formatIncidentTime(incident.updatedAt))
+            }
             DetailField(
                 label = stringResource(R.string.photos_label),
                 value = stringResource(R.string.photo_count, incident.photos.size),
@@ -131,6 +136,8 @@ private val PreviewIncident = Incident(
     title = "Hydraulic press is not responding",
     location = "Workshop · Bay 3",
     description = "The control panel does not respond when the machine is switched on.",
+    createdAt = java.time.Instant.parse("2026-10-20T09:00:00Z"),
+    updatedAt = java.time.Instant.parse("2026-10-21T11:30:00Z"),
 )
 
 @Preview(name = "Incident details", showBackground = true)

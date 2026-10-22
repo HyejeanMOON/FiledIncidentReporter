@@ -10,6 +10,8 @@
     <string name="incident_title_label">Incident title</string>
     <string name="location_label">Location</string>
     <string name="description_label">Description</string>
+    <string name="created_at_label">Created</string>
+    <string name="updated_at_label">Updated</string>
     <string name="photos_label">Photos</string>
     <string name="photos_help">Add pictures that help identify the issue.</string>
     <string name="choose_photos">Choose photos</string>

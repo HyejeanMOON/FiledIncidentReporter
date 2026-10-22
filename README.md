@@ -20,7 +20,7 @@ The server listens on port 8080 and stores incidents in a local H2 database. The
 | PATCH | `/incidents/{id}` | Update a report, delete photos by ID, and upload new photo files |
 | DELETE | `/incidents/{id}` | Remove a report |
 
-Each report has string `id`, `title`, `location`, `description`, and `photos` fields. Each photo has a server-generated ID, an original file URL, and a thumbnail URL. The list API returns photo metadata instead of embedded Base64 previews. An update sends `deletePhotoIds` for removed old photos and multipart files for new photos; unchanged photos are not uploaded again.
+Each report has string `id`, `title`, `location`, `description`, and `photos` fields, plus server-generated `createdAt` and `updatedAt` timestamps in ISO 8601 UTC. Each photo has a server-generated ID, an original file URL, and a thumbnail URL. The list API returns photo metadata instead of embedded Base64 previews. An update sends `deletePhotoIds` for removed old photos and multipart files for new photos; unchanged photos are not uploaded again. The app displays creation time in the device's local time zone and displays update time only after the report has been edited.
 
 ## Run the Android app
 

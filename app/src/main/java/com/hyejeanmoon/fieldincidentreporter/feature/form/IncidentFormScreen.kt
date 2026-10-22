@@ -271,6 +271,8 @@ private val PreviewIncident = Incident(
     title = "Hydraulic press is not responding",
     location = "Workshop · Bay 3",
     description = "The control panel does not respond when the machine is switched on.",
+    createdAt = java.time.Instant.parse("2026-10-20T09:00:00Z"),
+    updatedAt = java.time.Instant.parse("2026-10-21T11:30:00Z"),
 )
 
 @Preview(name = "New incident form", showBackground = true)

@@ -45,6 +45,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentSummary
 import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.feature.common.IncidentPhotoImage
 import com.hyejeanmoon.fieldincidentreporter.feature.common.LoadingIncidentScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.common.formatIncidentTime
 import com.hyejeanmoon.fieldincidentreporter.feature.messageResId
 import com.hyejeanmoon.fieldincidentreporter.feature.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
@@ -219,6 +220,18 @@ private fun IncidentCard(incident: IncidentSummary, onClick: () -> Unit) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(
+                text = stringResource(R.string.created_at_label) + ": " + formatIncidentTime(incident.createdAt),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (incident.updatedAt != incident.createdAt) {
+                Text(
+                    text = stringResource(R.string.updated_at_label) + ": " + formatIncidentTime(incident.updatedAt),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             val previews = incident.photoPreviews
             if (previews.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -246,6 +259,8 @@ private val PreviewIncident = IncidentSummary(
     location = "Workshop · Bay 3",
     description = "The control panel does not respond when the machine is switched on.",
     photoPreviews = emptyList(),
+    createdAt = java.time.Instant.parse("2026-10-20T09:00:00Z"),
+    updatedAt = java.time.Instant.parse("2026-10-21T11:30:00Z"),
 )
 
 @Preview(name = "Incident list", showBackground = true)

@@ -116,13 +116,8 @@ class IncidentFormViewModel @Inject constructor(
                     createIncident(request.toDraft())
                 } else {
                     updateIncident(
-                        Incident(
-                            request.incidentId,
-                            request.title,
-                            request.location,
-                            request.description,
-                            request.photos,
-                        ),
+                        request.incidentId,
+                        request.toDraft(),
                         request.deletedPhotoIds,
                     )
                 }
