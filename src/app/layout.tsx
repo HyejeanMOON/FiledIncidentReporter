@@ -7,11 +7,12 @@ export const metadata: Metadata = {
   description: "Field incident management console",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children, modal }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
+        {modal}
       </body>
     </html>
   );
