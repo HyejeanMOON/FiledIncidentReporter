@@ -12,6 +12,7 @@ data class Incident(
     val photos: List<IncidentPhoto>,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val resolvedAt: Instant? = null,
 )
 
 data class IncidentInput(

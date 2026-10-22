@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestPart
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -54,9 +55,16 @@ data class IncidentResponse(
     val photos: List<PhotoResponse>,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val resolved: Boolean,
+    val resolvedAt: Instant?,
 )
 
-fun Incident.toResponse() = IncidentResponse(id, title, location, description, photos.map { it.toResponse(id) }, createdAt, updatedAt)
+fun Incident.toResponse() = IncidentResponse(
+    id, title, location, description, photos.map { it.toResponse(id) }, createdAt, updatedAt,
+    resolvedAt != null, resolvedAt,
+)
+
+data class IncidentResolutionBody(val resolved: Boolean)
 
 data class IncidentPageResponse(
     val items: List<IncidentResponse>,
@@ -70,6 +78,10 @@ data class IncidentPageResponse(
 class IncidentController(private val service: IncidentService) {
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): IncidentResponse = service.get(id).toResponse()
+
+    @PatchMapping("/{id}/resolution", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    fun setResolved(@PathVariable id: String, @RequestBody body: IncidentResolutionBody): IncidentResponse =
+        service.setResolved(id, body.resolved).toResponse()
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -91,8 +103,10 @@ class IncidentController(private val service: IncidentService) {
     fun list(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) resolved: Boolean?,
     ): IncidentPageResponse {
-        val result = service.list(page, size)
+        val result = service.list(page, size, q, resolved)
         return IncidentPageResponse(
             result.items.map(Incident::toResponse),
             result.page,

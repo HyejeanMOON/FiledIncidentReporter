@@ -55,20 +55,33 @@ class IncidentService(
         val removed = existing.photos.filter { it.id in deletedIds }
         cleanupPhotosAfterTransaction(added = stored, removed = removed)
         val now = Instant.now()
-        val incident = Incident(
-            id, valid.title, valid.location, valid.description, retained + stored,
-            existing.createdAt, now,
+        val incident = existing.copy(
+            title = valid.title,
+            location = valid.location,
+            description = valid.description,
+            photos = retained + stored,
+            updatedAt = now,
         )
         if (!repository.update(incident)) throw IncidentNotFoundException()
         return incident
     }
 
     @Transactional(readOnly = true)
-    fun list(page: Int, size: Int): IncidentPage {
+    fun list(page: Int, size: Int, query: String?, resolved: Boolean?): IncidentPage {
         if (page < 0 || size !in 1..100) {
             throw InvalidIncidentException("page must be nonnegative and size must be between 1 and 100")
         }
-        return repository.findPage(page, size)
+        val normalizedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
+        if (normalizedQuery != null && normalizedQuery.length > 200) {
+            throw InvalidIncidentException("q must contain at most 200 characters")
+        }
+        return repository.findPage(page, size, normalizedQuery, resolved)
+    }
+
+    @Transactional
+    fun setResolved(id: String, resolved: Boolean): Incident {
+        repository.setResolved(id, resolved, Instant.now())
+        return repository.findById(id) ?: throw IncidentNotFoundException()
     }
 
     @Transactional

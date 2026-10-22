@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -176,6 +177,64 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
+    fun `resolution can be set reopened and set again without losing the original transition time`() {
+        val created = create("Resolution workflow").andReturn().response.contentAsString
+        val id = JsonPath.read<String>(created, "$.id")
+        assertEquals(false, JsonPath.read<Boolean>(created, "$.resolved"))
+        assertEquals(null, JsonPath.read<String?>(created, "$.resolvedAt"))
+
+        val first = resolution(id, true).andExpect(status().isOk)
+            .andExpect(jsonPath("$.resolved").value(true))
+            .andExpect(jsonPath("$.resolvedAt").exists())
+            .andReturn().response.contentAsString
+        val firstTime = JsonPath.read<String>(first, "$.resolvedAt")
+        assertEquals(firstTime, JsonPath.read<String>(resolution(id, true).andReturn().response.contentAsString, "$.resolvedAt"))
+        mvc.perform(get("/incidents/$id"))
+            .andExpect(jsonPath("$.resolved").value(true))
+            .andExpect(jsonPath("$.resolvedAt").value(firstTime))
+        update(id).andExpect(status().isOk)
+            .andExpect(jsonPath("$.resolvedAt").value(firstTime))
+
+        resolution(id, false).andExpect(status().isOk)
+            .andExpect(jsonPath("$.resolved").value(false))
+            .andExpect(jsonPath("$.resolvedAt").value(null))
+        resolution(id, true).andExpect(status().isOk)
+            .andExpect(jsonPath("$.resolved").value(true))
+            .andExpect(jsonPath("$.resolvedAt").exists())
+        resolution("missing", true).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
+    }
+
+    @Test
+    fun `list searches text fields and filters resolution before pagination`() {
+        val titleId = JsonPath.read<String>(create("ZXQ-413 title").andReturn().response.contentAsString, "$.id")
+        create("Other title", location = "ZXQ-413 location")
+        create("Another title", description = "ZXQ-413 description")
+        create("Percentage % marker")
+        resolution(titleId, true).andExpect(status().isOk)
+
+        mvc.perform(get("/incidents?q=zxq-413&resolved=true&page=0&size=1"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(titleId))
+            .andExpect(jsonPath("$.hasNext").value(false))
+        mvc.perform(get("/incidents?q=ZXQ-413&resolved=false&page=0&size=1"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.hasNext").value(true))
+        mvc.perform(get("/incidents?q=ZXQ-413&resolved=false&page=1&size=1"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+        mvc.perform(get("/incidents").param("q", "% marker"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+        mvc.perform(get("/incidents?q=${"x".repeat(201)}"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+    }
+
+    @Test
     fun `thumbnail endpoint returns resized compressed photo data`() {
         val image = BufferedImage(1200, 800, BufferedImage.TYPE_INT_RGB)
         val graphics = image.createGraphics()
@@ -286,10 +345,15 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(jsonPath("$.status").value(400))
     }
 
-    private fun create(title: String, photos: List<String> = listOf("one")): ResultActions {
+    private fun create(
+        title: String,
+        photos: List<String> = listOf("one"),
+        location: String = "Plant",
+        description: String = "Details",
+    ): ResultActions {
         val metadata = MockMultipartFile(
             "incident", "", MediaType.APPLICATION_JSON_VALUE,
-            """{"title":"$title","location":"Plant","description":"Details"}""".toByteArray(),
+            """{"title":"$title","location":"$location","description":"$description"}""".toByteArray(),
         )
         val request = multipart("/incidents").file(metadata)
         photos.forEach { photo ->
@@ -297,6 +361,12 @@ class IncidentApiTests @Autowired constructor(
         }
         return mvc.perform(request)
     }
+
+    private fun resolution(id: String, resolved: Boolean): ResultActions = mvc.perform(
+        patch("/incidents/$id/resolution")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"resolved":$resolved}"""),
+    )
 
     private fun update(id: String, deleted: List<String> = emptyList(), photos: List<String> = emptyList()): ResultActions {
         val deletedJson = deleted.joinToString(",", "[", "]") { "\"$it\"" }

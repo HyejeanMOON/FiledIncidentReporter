@@ -7,13 +7,15 @@ import com.example.incidentreporter.incident.domain.IncidentPage
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.Locale
 
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
     override fun findById(id: String): Incident? {
-        val incident = jdbc.sql("SELECT id, title, location, description, created_at, updated_at FROM incidents WHERE id = :id")
+        val incident = jdbc.sql("SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents WHERE id = :id")
             .param("id", id)
             .query { rs, _ -> mapIncident(rs) }
             .optional()
@@ -49,13 +51,39 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         return true
     }
 
-    override fun findPage(page: Int, size: Int): IncidentPage {
+    override fun setResolved(id: String, resolved: Boolean, at: Instant) {
+        val sql = if (resolved) {
+            "UPDATE incidents SET resolved_at = :at, updated_at = :at WHERE id = :id AND resolved_at IS NULL"
+        } else {
+            "UPDATE incidents SET resolved_at = NULL, updated_at = :at WHERE id = :id AND resolved_at IS NOT NULL"
+        }
+        jdbc.sql(sql)
+            .param("id", id)
+            .param("at", OffsetDateTime.ofInstant(at, ZoneOffset.UTC))
+            .update()
+    }
+
+    override fun findPage(page: Int, size: Int, query: String?, resolved: Boolean?): IncidentPage {
+        val filters = mutableListOf<String>()
+        val params = mutableMapOf<String, Any>("limit" to size + 1, "offset" to page.toLong() * size)
+        if (query != null) {
+            val escaped = query.lowercase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_")
+            filters += "(LOWER(title) LIKE :pattern ESCAPE '!' OR LOWER(location) LIKE :pattern ESCAPE '!' OR LOWER(description) LIKE :pattern ESCAPE '!')"
+            params["pattern"] = "%$escaped%"
+        }
+        if (resolved != null) {
+            filters += if (resolved) "resolved_at IS NOT NULL" else "resolved_at IS NULL"
+        }
+        val where = if (filters.isEmpty()) "" else "WHERE ${filters.joinToString(" AND ")} "
         val rows = jdbc.sql(
-            "SELECT id, title, location, description, created_at, updated_at FROM incidents " +
+            "SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents " +
+                where +
                 "ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset",
         )
-            .param("limit", size + 1)
-            .param("offset", page.toLong() * size)
+            .params(params)
             .query { rs, _ -> mapIncident(rs) }
             .list()
         val pageRows = rows.take(size)
@@ -105,5 +133,6 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         photos = emptyList(),
         createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
         updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
+        resolvedAt = rs.getObject("resolved_at", OffsetDateTime::class.java)?.toInstant(),
     )
 }
