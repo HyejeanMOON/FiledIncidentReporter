@@ -1,8 +1,10 @@
 package com.hyejeanmoon.fieldincidentreporter.data.remote
 
-import com.google.gson.JsonParser
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -21,10 +23,9 @@ internal suspend fun <T> incidentRequest(block: suspend () -> T): T = try {
 /** Reads the stable `code` of an RFC 9457 Problem Details body, falling back to the HTTP status. */
 internal fun HttpException.toIncidentFailure(): IncidentFailure {
     val code = runCatching {
-        response()?.errorBody()?.charStream()?.use { reader ->
-            JsonParser.parseReader(reader).takeIf { it.isJsonObject }
-                ?.asJsonObject?.get("code")?.takeIf { it.isJsonPrimitive }?.asString
-        }
+        val body = response()?.errorBody()?.string() ?: return@runCatching null
+        ((Json.parseToJsonElement(body) as? JsonObject)?.get("code") as? JsonPrimitive)
+            ?.takeIf { it.isString }?.content
     }.getOrNull()
     return failureForApiError(code, code())
 }
