@@ -1,4 +1,4 @@
-package com.example.incidentreporter.incident.api
+package com.example.incidentreporter.incident.application
 
 import com.example.incidentreporter.incident.domain.StoredPhoto
 import org.springframework.stereotype.Component
@@ -7,6 +7,7 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 
@@ -22,7 +23,7 @@ class PhotoPreviewEncoder {
             null
         }) ?: return PhotoPreview(photo.contentType, bytes)
 
-        val scale = minOf(1.0, 512.0 / maxOf(image.width, image.height))
+        val scale = minOf(1.0, MAX_DIMENSION / maxOf(image.width, image.height))
         val width = maxOf(1, (image.width * scale).toInt())
         val height = maxOf(1, (image.height * scale).toInt())
         val preview = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
@@ -43,13 +44,18 @@ class PhotoPreviewEncoder {
                 writer.output = stream
                 val options = writer.defaultWriteParam.apply {
                     compressionMode = ImageWriteParam.MODE_EXPLICIT
-                    compressionQuality = 0.7f
+                    compressionQuality = JPEG_QUALITY
                 }
-                writer.write(null, javax.imageio.IIOImage(preview, null, null), options)
+                writer.write(null, IIOImage(preview, null, null), options)
             }
         } finally {
             writer.dispose()
         }
         return PhotoPreview("image/jpeg", output.toByteArray())
+    }
+
+    private companion object {
+        const val MAX_DIMENSION = 512.0
+        const val JPEG_QUALITY = 0.7f
     }
 }
