@@ -1,9 +1,9 @@
 package com.example.incidentreporter.incident.persistence
 
 import com.example.incidentreporter.incident.domain.Incident
+import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
 import com.example.incidentreporter.incident.domain.IncidentRepository
-import com.example.incidentreporter.incident.domain.IncidentPage
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
@@ -15,16 +15,12 @@ import java.util.Locale
 @Repository
 class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository {
     override fun findById(id: String): Incident? {
-        val incident = jdbc.sql("SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents WHERE id = :id")
+        val incident = jdbc.sql("$SELECT_INCIDENTS WHERE id = :id")
             .param("id", id)
             .query { rs, _ -> mapIncident(rs) }
             .optional()
             .orElse(null) ?: return null
-        val photos = jdbc.sql("SELECT photo_id, photo_uri FROM incident_photos WHERE incident_id = :id ORDER BY position")
-            .param("id", id)
-            .query { rs, _ -> IncidentPhoto(rs.getString("photo_id"), rs.getString("photo_uri")) }
-            .list()
-        return incident.copy(photos = photos)
+        return incident.copy(photos = findPhotos(listOf(id))[id].orEmpty())
     }
 
     override fun delete(id: String): Boolean =
@@ -40,7 +36,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .param("title", incident.title)
             .param("location", incident.location)
             .param("description", incident.description)
-            .param("updatedAt", OffsetDateTime.ofInstant(incident.updatedAt, ZoneOffset.UTC))
+            .param("updatedAt", incident.updatedAt.toUtc())
             .update()
         if (updated == 0) return false
 
@@ -59,7 +55,7 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         }
         jdbc.sql(sql)
             .param("id", id)
-            .param("at", OffsetDateTime.ofInstant(at, ZoneOffset.UTC))
+            .param("at", at.toUtc())
             .update()
     }
 
@@ -78,26 +74,14 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             filters += if (resolved) "resolved_at IS NOT NULL" else "resolved_at IS NULL"
         }
         val where = if (filters.isEmpty()) "" else "WHERE ${filters.joinToString(" AND ")} "
-        val rows = jdbc.sql(
-            "SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents " +
-                where +
-                "ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset",
-        )
+        val rows = jdbc.sql("$SELECT_INCIDENTS ${where}ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset")
             .params(params)
             .query { rs, _ -> mapIncident(rs) }
             .list()
         val pageRows = rows.take(size)
         if (pageRows.isEmpty()) return IncidentPage(emptyList(), page, size, false)
 
-        val photos = jdbc.sql(
-            "SELECT incident_id, photo_id, photo_uri FROM incident_photos " +
-                "WHERE incident_id IN (:ids) ORDER BY incident_id, position",
-        )
-            .param("ids", pageRows.map { it.id })
-            .query { rs, _ -> rs.getString("incident_id") to IncidentPhoto(rs.getString("photo_id"), rs.getString("photo_uri")) }
-            .list()
-            .groupBy({ it.first }, { it.second })
-
+        val photos = findPhotos(pageRows.map(Incident::id))
         return IncidentPage(pageRows.map { it.copy(photos = photos[it.id].orEmpty()) }, page, size, rows.size > size)
     }
 
@@ -107,12 +91,23 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .param("title", incident.title)
             .param("location", incident.location)
             .param("description", incident.description)
-            .param("createdAt", OffsetDateTime.ofInstant(incident.createdAt, ZoneOffset.UTC))
-            .param("updatedAt", OffsetDateTime.ofInstant(incident.updatedAt, ZoneOffset.UTC))
+            .param("createdAt", incident.createdAt.toUtc())
+            .param("updatedAt", incident.updatedAt.toUtc())
             .update()
 
         insertPhotos(incident)
     }
+
+    /** Loads the photos of the given incidents, keyed by incident ID and kept in their stored order. */
+    private fun findPhotos(incidentIds: List<String>): Map<String, List<IncidentPhoto>> =
+        jdbc.sql(
+            "SELECT incident_id, photo_id, photo_uri FROM incident_photos " +
+                "WHERE incident_id IN (:ids) ORDER BY incident_id, position",
+        )
+            .param("ids", incidentIds)
+            .query { rs, _ -> rs.getString("incident_id") to IncidentPhoto(rs.getString("photo_id"), rs.getString("photo_uri")) }
+            .list()
+            .groupBy({ it.first }, { it.second })
 
     private fun insertPhotos(incident: Incident) {
         incident.photos.forEachIndexed { position, photo ->
@@ -135,4 +130,11 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java).toInstant(),
         resolvedAt = rs.getObject("resolved_at", OffsetDateTime::class.java)?.toInstant(),
     )
+
+    private fun Instant.toUtc(): OffsetDateTime = OffsetDateTime.ofInstant(this, ZoneOffset.UTC)
+
+    private companion object {
+        const val SELECT_INCIDENTS =
+            "SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents"
+    }
 }
