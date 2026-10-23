@@ -13,6 +13,8 @@ const paths = {
   image: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m3 17 5-5 4 4 3-3 6 6" /></>,
   chevron: <path d="m9 5 7 7-7 7" />,
   alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7v6M12 17h.01" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+  camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4Z" /><circle cx="12" cy="13" r="3.5" /></>,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof paths;
