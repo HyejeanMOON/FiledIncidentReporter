@@ -16,11 +16,22 @@ async function fetchBackend(path: string, init?: RequestInit): Promise<Response>
   }
 }
 
+// Messages for the backend's stable Problem Details codes, shared with the Android client.
+const problemMessages: Record<string, string> = {
+  INCIDENT_NOT_FOUND: "This report no longer exists on the server. Refresh the list.",
+  RESOURCE_NOT_FOUND: "This report no longer exists on the server. Refresh the list.",
+  INVALID_INCIDENT: "The report does not meet the server requirements. Check its fields and photos, then try again.",
+  INVALID_REQUEST: "The server could not understand this request. Check that the app and server versions match.",
+  PAYLOAD_TOO_LARGE: "A photo is too large to upload. Choose photos under 10 MB and try again.",
+  INTERNAL_ERROR: "The server could not complete the request. Please try again.",
+};
+
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetchBackend(path, init);
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new BackendError(data?.detail || data?.title || `Request failed (${response.status})`, response.status);
+    const message = problemMessages[data?.code] || data?.detail || data?.title || `Request failed (${response.status})`;
+    throw new BackendError(message, response.status);
   }
   return data as T;
 }
