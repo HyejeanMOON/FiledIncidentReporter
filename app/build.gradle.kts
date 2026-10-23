@@ -55,6 +55,9 @@ dependencies {
     implementation(libs.androidx.paging.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.paging)
+    ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

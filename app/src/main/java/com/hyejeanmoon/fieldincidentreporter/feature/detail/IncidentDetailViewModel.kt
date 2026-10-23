@@ -5,16 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentChange
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ObserveIncidentChangesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +19,6 @@ class IncidentDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getIncident: GetIncidentUseCase,
     private val deleteIncident: DeleteIncidentUseCase,
-    observeIncidentChanges: ObserveIncidentChangesUseCase,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentDetailRoute().incidentId
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
@@ -32,13 +26,6 @@ class IncidentDetailViewModel @Inject constructor(
 
     init {
         load()
-        // An edit saved from the form shows here without another request.
-        observeIncidentChanges()
-            .filterIsInstance<IncidentChange.Saved>()
-            .onEach { change ->
-                if (change.incident.id == incidentId) _uiState.update { it.copy(incident = change.incident) }
-            }
-            .launchIn(viewModelScope)
     }
 
     fun onAction(action: IncidentDetailAction) {

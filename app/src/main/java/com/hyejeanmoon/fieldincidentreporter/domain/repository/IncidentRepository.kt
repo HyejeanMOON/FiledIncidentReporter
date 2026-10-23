@@ -1,14 +1,13 @@
 package com.hyejeanmoon.fieldincidentreporter.domain.repository
 
+import androidx.paging.PagingData
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
-import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentChange
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
-import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPage
 import kotlinx.coroutines.flow.Flow
 
 interface IncidentRepository {
-    val changes: Flow<IncidentChange>
-    suspend fun getIncidentsPage(page: Int, size: Int): IncidentPage
+    /** Reports newest first, read from the local cache, which loads pages from the server as the list grows. */
+    fun incidents(): Flow<PagingData<Incident>>
     suspend fun getIncident(id: String): Incident
     suspend fun create(draft: IncidentDraft): Incident
     suspend fun update(id: String, draft: IncidentDraft, deletePhotoIds: List<String>): Incident

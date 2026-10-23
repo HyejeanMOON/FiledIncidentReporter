@@ -14,14 +14,14 @@ class IncidentMapperTest {
 
     @Test
     fun `list and detail photos resolve the full image URL against the api origin`() {
-        val page = ApiJson.decodeFromString<IncidentPageDto>(
+        val listItem = ApiJson.decodeFromString<IncidentPageDto>(
             """{"items":[$IncidentJson],"page":0,"size":20,"hasNext":false}""",
-        ).toIncidentPage(baseUrl)
+        ).items.single().toIncident(baseUrl)
         val detail = ApiJson.decodeFromString<IncidentDto>(IncidentJson).toIncident(baseUrl)
 
         val expectedPhoto = IncidentPhoto.Stored("photo-1", "http://example.test/incidents/1/photos/photo-1")
-        assertEquals(listOf(expectedPhoto), page.items.single().photos)
-        assertEquals(page.items.single(), detail)
+        assertEquals(listOf(expectedPhoto), listItem.photos)
+        assertEquals(listItem, detail)
         assertEquals(Instant.parse("2026-10-20T09:00:00Z"), detail.createdAt)
         assertEquals(true, detail.isEdited)
     }

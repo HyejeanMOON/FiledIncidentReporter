@@ -13,15 +13,3 @@ data class Incident(
 ) {
     val isEdited: Boolean get() = updatedAt != createdAt
 }
-
-data class IncidentPage(
-    val items: List<Incident>,
-    val page: Int,
-    val hasNext: Boolean,
-)
-
-/** A successful write, published by the repository so that every screen can stay in sync. */
-sealed interface IncidentChange {
-    data class Saved(val incident: Incident) : IncidentChange
-    data class Deleted(val id: String) : IncidentChange
-}
