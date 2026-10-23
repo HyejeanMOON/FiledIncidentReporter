@@ -17,8 +17,8 @@ fun NavController.navigateToIncidentForm(incidentId: String? = null) {
     navigate(IncidentFormRoute(incidentId)) { launchSingleTop = true }
 }
 
-fun NavGraphBuilder.incidentFormScreen(onBack: () -> Unit) {
+fun NavGraphBuilder.incidentFormScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     composable<IncidentFormRoute> {
-        IncidentFormScreen(onBack = dropUnlessResumed(block = onBack), onSaved = onBack)
+        IncidentFormScreen(onBack = dropUnlessResumed(block = onBack), onSaved = onSaved)
     }
 }

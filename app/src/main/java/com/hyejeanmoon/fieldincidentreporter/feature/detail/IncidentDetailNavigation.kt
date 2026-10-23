@@ -20,12 +20,13 @@ fun NavController.navigateToIncidentDetail(incidentId: String) {
 
 fun NavGraphBuilder.incidentDetailScreen(
     onBack: () -> Unit,
+    onDeleted: () -> Unit,
     onEdit: (String) -> Unit,
 ) {
     composable<IncidentDetailRoute> {
         IncidentDetailScreen(
             onBack = dropUnlessResumed(block = onBack),
-            onDeleted = onBack,
+            onDeleted = onDeleted,
             onEdit = onEdit,
         )
     }

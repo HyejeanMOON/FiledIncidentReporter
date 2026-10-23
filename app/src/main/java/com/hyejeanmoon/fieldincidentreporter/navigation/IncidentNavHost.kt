@@ -18,6 +18,7 @@ import com.hyejeanmoon.fieldincidentreporter.feature.form.incidentFormScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.form.navigateToIncidentForm
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListRoute
 import com.hyejeanmoon.fieldincidentreporter.feature.list.incidentListScreen
+import com.hyejeanmoon.fieldincidentreporter.feature.list.returnToIncidentListAfterMutation
 
 private const val TransitionMillis = 320
 
@@ -38,9 +39,13 @@ fun IncidentNavHost(navController: NavHostController = rememberNavController()) 
         )
         incidentDetailScreen(
             onBack = navigateBack,
+            onDeleted = navController::returnToIncidentListAfterMutation,
             onEdit = navController::navigateToIncidentForm,
         )
-        incidentFormScreen(onBack = navigateBack)
+        incidentFormScreen(
+            onBack = navigateBack,
+            onSaved = navController::returnToIncidentListAfterMutation,
+        )
     }
 }
 

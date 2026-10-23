@@ -56,12 +56,21 @@ import java.time.Instant
 
 @Composable
 internal fun IncidentListScreen(
+    refreshRequested: Boolean,
+    onRefreshRequestHandled: () -> Unit,
     onReportIncident: () -> Unit,
     onIncidentClick: (String) -> Unit,
     viewModel: IncidentListViewModel = hiltViewModel(),
 ) {
+    val incidents = viewModel.incidents.collectAsLazyPagingItems()
+    LaunchedEffect(refreshRequested) {
+        if (refreshRequested) {
+            incidents.refresh()
+            onRefreshRequestHandled()
+        }
+    }
     IncidentListContent(
-        incidents = viewModel.incidents.collectAsLazyPagingItems(),
+        incidents = incidents,
         onReportIncident = onReportIncident,
         onIncidentClick = onIncidentClick,
     )
