@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEventHandler, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type KeyboardEventHandler, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+
+const subscribeNever = () => () => {};
 
 /**
  * A native modal `<dialog>`: focus trapping, Escape and stacking come from the browser.
@@ -14,14 +17,18 @@ export function Dialog({ className, label, onClose, onKeyDown, children }: {
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // The portal target only exists in the browser; prerendered shells render nothing here.
+  const isClient = useSyncExternalStore(subscribeNever, () => true, () => false);
 
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
     return () => dialog?.close();
-  }, []);
+  }, [isClient]);
 
-  return (
+  if (!isClient) return null;
+  // Portal to <body> so styles of the opener's ancestors don't leak into the dialog.
+  return createPortal(
     <dialog
       ref={ref}
       className={className}
@@ -33,6 +40,7 @@ export function Dialog({ className, label, onClose, onKeyDown, children }: {
       onKeyDown={onKeyDown}
     >
       {children}
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }
