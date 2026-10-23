@@ -39,6 +39,7 @@
     <string name="refresh">Refresh</string>
     <string name="retry">Retry</string>
     <string name="loading_incidents">Loading reports…</string>
+    <string name="cached_incidents_notice">Showing saved reports. They may be out of date.</string>
     <string name="error_title">Could not complete the request</string>
     <string name="error_network">Cannot reach the server. Check your connection and try again.</string>
     <string name="error_photo">Could not read a selected photo. Select it again and retry.</string>

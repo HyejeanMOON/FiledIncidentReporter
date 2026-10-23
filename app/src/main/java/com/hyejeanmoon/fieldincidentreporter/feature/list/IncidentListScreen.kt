@@ -21,12 +21,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,11 +38,9 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.hyejeanmoon.fieldincidentreporter.R
-import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.ui.component.ErrorContent
-import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoThumbnail
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LabeledText
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LoadingContent
@@ -83,13 +78,9 @@ internal fun IncidentListContent(
     onReportIncident: () -> Unit,
     onIncidentClick: (String) -> Unit,
 ) {
+    // Follows the server refresh; Room reloading the list after each write does not change it.
     val refresh = incidents.loadState.refresh
-    val append = incidents.loadState.append
-    val loadError = (refresh as? LoadState.Error)?.error ?: (append as? LoadState.Error)?.error
-    var dialogFailure by remember { mutableStateOf<IncidentFailure?>(null) }
-    LaunchedEffect(loadError) {
-        dialogFailure = loadError?.toIncidentFailure()
-    }
+    val refreshFailure = (refresh as? LoadState.Error)?.error?.toIncidentFailure()
     if (refresh is LoadState.Loading && incidents.itemCount == 0) {
         LoadingContent(Modifier.fillMaxSize(), message = stringResource(R.string.loading_incidents))
         return
@@ -100,7 +91,9 @@ internal fun IncidentListContent(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    TextButton(onClick = incidents::refresh) { Text(stringResource(R.string.refresh)) }
+                    TextButton(onClick = incidents::refresh, enabled = refresh !is LoadState.Loading) {
+                        Text(stringResource(R.string.refresh))
+                    }
                 },
             )
         },
@@ -111,54 +104,62 @@ internal fun IncidentListContent(
         },
     ) { contentPadding ->
         when {
-            refresh is LoadState.Error && incidents.itemCount == 0 -> ErrorContent(
-                failure = refresh.error.toIncidentFailure(),
-                onRetry = incidents::retry,
+            refreshFailure != null && incidents.itemCount == 0 -> ErrorContent(
+                failure = refreshFailure,
+                onRetry = incidents::refresh,
                 modifier = Modifier.fillMaxSize().padding(contentPadding),
             )
-            refresh is LoadState.NotLoading && incidents.itemCount == 0 -> EmptyIncidentList(
+            incidents.itemCount == 0 -> EmptyIncidentList(
                 onReportIncident = onReportIncident,
                 modifier = Modifier.fillMaxSize().padding(contentPadding).padding(24.dp),
             )
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    top = 16.dp + contentPadding.calculateTopPadding(),
-                    end = 20.dp,
-                    bottom = 96.dp + contentPadding.calculateBottomPadding(),
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            else -> PullToRefreshBox(
+                isRefreshing = refresh is LoadState.Loading,
+                onRefresh = incidents::refresh,
+                modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding()),
             ) {
-                item {
-                    Text(
-                        text = stringResource(R.string.incident_list_heading),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                if (refresh is LoadState.Error) {
-                    item { ErrorContent(failure = refresh.error.toIncidentFailure(), onRetry = incidents::retry) }
-                }
-                items(count = incidents.itemCount, key = incidents.itemKey { it.id }) { index ->
-                    incidents[index]?.let { incident ->
-                        IncidentCard(incident = incident, onClick = { onIncidentClick(incident.id) })
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        top = 16.dp,
+                        end = 20.dp,
+                        bottom = 96.dp + contentPadding.calculateBottomPadding(),
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.incident_list_heading),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
-                }
-                when (append) {
-                    is LoadState.Loading -> item {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    if (refreshFailure != null) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.cached_incidents_notice),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            ErrorContent(failure = refreshFailure, onRetry = incidents::refresh)
+                        }
                     }
-                    is LoadState.Error -> item {
-                        ErrorContent(failure = append.error.toIncidentFailure(), onRetry = incidents::retry)
+                    items(count = incidents.itemCount, key = incidents.itemKey(Incident::id)) { index ->
+                        incidents[index]?.let { incident ->
+                            IncidentCard(incident = incident, onClick = { onIncidentClick(incident.id) })
+                        }
                     }
-                    is LoadState.NotLoading -> Unit
+                    when (val append = incidents.loadState.append) {
+                        is LoadState.Loading -> item { CircularProgressIndicator(modifier = Modifier.padding(16.dp)) }
+                        is LoadState.Error -> item {
+                            ErrorContent(failure = append.error.toIncidentFailure(), onRetry = incidents::retry)
+                        }
+                        is LoadState.NotLoading -> Unit
+                    }
                 }
             }
         }
-    }
-    dialogFailure?.let { failure ->
-        IncidentErrorDialog(failure = failure, onDismiss = { dialogFailure = null })
     }
 }
 
