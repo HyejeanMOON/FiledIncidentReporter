@@ -74,6 +74,12 @@ h1 { font-size: clamp(31px, 3vw, 40px); letter-spacing: -1.8px; margin: 13px 0 8
 .report-button { border: 1px solid #087f77; background: #0b8b81; color: #fff; border-radius: 8px; height: 39px; padding: 0 15px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 12px #0b89802e; }
 .report-button:hover { background: #08776f; }
 
+.detail-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.detail-action { flex: 1; height: 38px; border: 1px solid #e0e8e8; background: #fff; color: #54656a; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.detail-action:not(:disabled):hover { border-color: #9bcac5; color: #087d77; }
+.detail-action.danger { color: #b5473b; }
+.detail-action.danger:not(:disabled):hover { border-color: #e8b4ad; background: #fdf3f1; color: #a33b30; }
+
 .incident-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .incident-form fieldset { margin: 0; border: 0; min-width: 0; }
 .form-heading { font-size: 18px; margin: 0 0 6px; }
@@ -99,6 +105,13 @@ h1 { font-size: clamp(31px, 3vw, 40px); letter-spacing: -1.8px; margin: 13px 0 8
 .text-button:not(:disabled):hover { color: #08776f; text-decoration: underline; }
 .form-cancel { display: block; margin: 8px auto 0; }
 
+.confirm-dialog { width: min(92vw, 400px); margin: auto; padding: 24px; border: 0; border-radius: 14px; color: inherit; box-shadow: 0 24px 80px #06141640; }
+.confirm-dialog::backdrop { background: #071b1d80; }
+.confirm-dialog h3 { font-size: 17px; margin-bottom: 10px; }
+.confirm-dialog p:not(.action-error) { color: #687a7e; font-size: 13px; line-height: 1.7; margin-bottom: 20px; }
+.confirm-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.danger-button { height: 38px; border: 1px solid #b5473b; background: #c0503f; color: #fff; border-radius: 8px; padding: 0 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+.danger-button:not(:disabled):hover { background: #a9422f; }
 @media (max-width: 900px) { .sidebar { width: 78px; padding-left: 13px; padding-right: 13px; }.brand { padding: 0 5px; }.brand > div:last-child, .nav-label, .nav-item { font-size: 0; }.nav-item { justify-content: center; }.nav-indicator, .sidebar-bottom { display: none; }.content-wrap { padding: 0 30px; } }
 @media (max-width: 650px) { .sidebar { display: none; }.content-wrap { padding: 0 18px; }.topbar { height: 64px; }.page-heading { padding-top: 29px; align-items: flex-start; }.page-heading p { max-width: 220px; line-height: 1.6; }.refresh-button, .report-button { font-size: 0; padding: 0; width: 39px; justify-content: center; flex: none; }.overview-grid { gap: 8px; margin-top: 27px; }.overview-card { padding: 14px 11px; min-height: 117px; display: block; }.overview-icon { height: 27px; width: 27px; margin-bottom: 9px; }.overview-icon svg { height: 15px; width: 15px; }.overview-card div:nth-child(2) span { font-size: 10px; margin-bottom: 5px; }.overview-card strong { font-size: 22px; }.overview-card small { display: none; }.records-section { margin-top: 40px; }.toolbar { display: block; }.filter-tabs { width: max-content; max-width: 100%; margin-bottom: 12px; }.filter-tabs button { padding: 8px 12px; font-size: 11px; }.search-controls { width: 100%; flex-wrap: wrap; justify-content: flex-start; }.search-scope { gap: 5px; }.search-scope select { max-width: 118px; }.search-field { max-width: none; width: 100%; flex-basis: 100%; }.incident-card { padding: 14px 15px 0; }.card-copy p { max-width: 240px; }.card-bottom { gap: 12px; font-size: 9px; }.card-bottom span:first-child { max-width: 48%; }.card-bottom span:nth-child(2) { max-width: 45%; }.detail-header { padding: 21px; }.detail-scroll { padding: 25px 21px; }.detail-footer { padding: 16px 21px; }.detail-page, .page-error { margin-top: 29px; } }
 
