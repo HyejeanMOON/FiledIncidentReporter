@@ -89,3 +89,34 @@ Each feature contains a `*Navigation.kt` file (a `@Serializable` route, a `NavCo
 Features do not call each other. After a successful create, update, or delete, the repository updates Room, which the list reads. A create or delete then returns to the list and requests one server refresh; an update returns to the report's details, which reload from the server while the previous copy stays on screen. The form saves the user's edits to `SavedStateHandle` as JSON so that they survive process death.
 
 Run the unit tests with `./gradlew :app:testDebugUnitTest`.
+
+## Next steps
+
+The prototype covers reporting, viewing, editing, and removing incidents end to end. These are the changes it would need next, roughly in order of value.
+
+**API contract**
+
+- Publish an OpenAPI document as the single source for both clients. Field limits, photo rules, and error codes are currently mirrored by hand in the server, the app, and the dashboard.
+- Add optimistic concurrency: a version or ETag on each report, sent back as `If-Match` on `PATCH` and `DELETE`, with `412 Precondition Failed` on a conflict. Today a technician's edit and an operator's edit can silently overwrite each other.
+- Make creates idempotent with an `Idempotency-Key` header (or a client-generated ID), so retrying a create after a timeout on a weak connection cannot create a duplicate report.
+- Separate numbered paging (dashboard) from cursor paging (app) in the repository and response types, and add a `field` parameter to search so the dashboard no longer scans result pages itself.
+
+**Android app**
+
+- Report offline: save the draft to Room and upload it with WorkManager once a connection is available. Technicians often work in basements or plant rooms; today saving needs a connection.
+- Resize and compress photos before upload to save data and stay under the 10 MB limit.
+- Ask before discarding unsaved changes when leaving the form.
+- Allow cleartext traffic only to the emulator host in debug builds, through a network security config.
+- Test the Room queries against real SQLite with Robolectric, and add Compose UI tests for the form and list states.
+
+**Server**
+
+- Generate thumbnails at upload instead of on every request. ImageIO cannot decode HEIC or WebP, so those previews are currently the original files. Photos never change, so they can also be served with long-lived cache headers.
+- Extend the triage model with a status workflow (open, in progress, resolved), priority, assignee, reporter, and coordinates.
+- Add seed data so a fresh setup has reports to demo.
+
+**Dashboard and delivery**
+
+- Add Vitest tests for URL query parsing, form validation, and paging.
+- Run all three test suites in GitHub Actions on every push.
+- Add authentication and roles (technician, operator), which this local prototype leaves out.

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
-import { formatDate, incidentNumber } from "../format";
+import { LocalTime } from "@/components/ui/local-time";
+import { incidentNumber } from "../format";
 import type { Incident } from "../types";
 import { DeleteIncidentButton } from "./delete-incident-button";
 import { useDetailContext } from "./detail-context";
@@ -37,7 +38,7 @@ export function IncidentDetailView({ incident }: { incident: Incident }) {
         <section className="detail-section"><h4>Description</h4><p className="description-text">{incident.description}</p></section>
         <section className="detail-section"><h4>Site photos <span>({incident.photos.length})</span></h4><PhotoGallery photos={incident.photos} /></section>
         <section className="detail-section"><h4>Timeline</h4><div className="timeline">
-          {timeline.map(({ label, value }) => <div key={label}><span className="timeline-dot" /><span>{label}</span><strong>{formatDate(value)}</strong></div>)}
+          {timeline.map(({ label, value }) => <div key={label}><span className="timeline-dot" /><span>{label}</span><strong><LocalTime value={value} /></strong></div>)}
         </div></section>
       </div>
       <div className="detail-footer">

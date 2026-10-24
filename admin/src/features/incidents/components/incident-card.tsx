@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
-import { formatDate, incidentNumber, photoPath } from "../format";
+import { LocalTime } from "@/components/ui/local-time";
+import { incidentNumber, photoPath } from "../format";
 import type { Incident } from "../types";
 import { StatusBadge } from "./status-badge";
 
@@ -14,7 +15,7 @@ export function IncidentCard({ incident }: { incident: Incident }) {
         {thumbnail ? <div className="card-thumbnail"><Image src={photoPath(thumbnail.thumbnailUrl)} alt="Incident photo preview" width={130} height={118} unoptimized /></div> : <div className="card-thumbnail no-photo"><Icon name="image" size={26} /></div>}
         <div className="card-copy"><h3>{incident.title}</h3><p>{incident.description}</p></div>
       </div>
-      <div className="card-bottom"><span><Icon name="pin" size={16} />{incident.location}</span><span><Icon name="clock" size={16} />{formatDate(incident.createdAt)}</span><span className="card-arrow"><Icon name="arrow" size={18} /></span></div>
+      <div className="card-bottom"><span><Icon name="pin" size={16} />{incident.location}</span><span><Icon name="clock" size={16} /><LocalTime value={incident.createdAt} /></span><span className="card-arrow"><Icon name="arrow" size={18} /></span></div>
     </Link>
   );
 }
