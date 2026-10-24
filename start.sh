@@ -97,6 +97,16 @@ wait_for() {
 wait_for server "$server_pid" "http://localhost:$SERVER_PORT/incidents?size=1" "$LOG_DIR/server.log"
 wait_for "admin dashboard" "$admin_pid" "http://localhost:$ADMIN_PORT" "$LOG_DIR/admin.log"
 
+# Prints this computer's address on the local network, for a physical device to reach the API.
+lan_ip() {
+  local ip=""
+  for iface in en0 en1; do
+    ip=$(ipconfig getifaddr "$iface" 2>/dev/null) && [[ -n "$ip" ]] && break
+  done
+  [[ -n "$ip" ]] || ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  echo "${ip:-<your-computer-ip>}"
+}
+
 cat <<EOF
 
   Incident API       http://localhost:$SERVER_PORT/incidents
@@ -104,6 +114,9 @@ cat <<EOF
   Android app        Run the "app" configuration in Android Studio on an emulator,
                      or run ./gradlew installDebug with an emulator open.
                      The emulator reaches the API at http://10.0.2.2:$SERVER_PORT/.
+                     For a physical device on the same Wi-Fi, add this line to
+                     gradle.properties and reinstall the app:
+                       incidentApiBaseUrl=http://$(lan_ip):$SERVER_PORT/
 
   Logs are in $LOG_DIR/server.log and $LOG_DIR/admin.log. Press Ctrl+C to stop.
 

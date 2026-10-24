@@ -34,33 +34,46 @@ Then run the `app` configuration in Android Studio, or `./gradlew installDebug` 
 
 ## Android app
 
-**Features:** list, view, create, edit, and delete reports; attach 1–20 photos from the picker or camera; see whether a report is open or resolved.
+Create, view, edit, and delete incident reports, each with 1–20 photos from the gallery or camera. Each report shows whether it is open or resolved.
 
-**API address:** the emulator default is `http://10.0.2.2:8080/`. For a physical device on the same network, set `incidentApiBaseUrl` (with a trailing slash), for example `-PincidentApiBaseUrl=http://192.168.1.10:8080/`.
+### Connecting to the server
 
-**Offline first:** the list reads from Room, so cached reports show immediately and offline. A Paging 3 `RemoteMediator` syncs pages of 20 from the server on first entry, on pull-to-refresh, on returning to the foreground, and after a save or delete. Opening a report fetches its latest copy from the server.
+| File | Role |
+| --- | --- |
+| [`gradle.properties`](gradle.properties) (project root) | Set `incidentApiBaseUrl` here to change the address |
+| [`app/build.gradle.kts`](app/build.gradle.kts) | Reads `incidentApiBaseUrl`, defaulting to `http://10.0.2.2:8080/` |
 
-**Architecture:** Google's layered architecture with unidirectional data flow (`feature` → `domain` ← `data`).
+- **Emulator:** works as is. The app connects to `http://10.0.2.2:8080/`, which is your computer as seen from the emulator.
+- **Physical device:** connect it to the same Wi-Fi as your computer, then add this line to [`gradle.properties`](gradle.properties) with your computer's IP address and reinstall the app:
+
+  ```properties
+  incidentApiBaseUrl=http://192.168.1.10:8080/
+  ```
+
+  On macOS, `ipconfig getifaddr en0` prints the IP address. Keep the trailing `/`, and change the port too if you set `SERVER_PORT`.
+
+### How it works
+
+- **Offline first:** reports are cached in a local database (Room), so the list loads instantly and works offline. It syncs with the server when you open the app, pull to refresh, or save a change.
+- **Layers:** `feature` (screens) → `domain` (models and use cases) ← `data` (database and network).
 
 ```
 com.hyejeanmoon.fieldincidentreporter
-├── navigation/  type-safe navigation graph
-├── domain/      models, failures, repository contract, use cases (plain Kotlin)
-├── data/        Room (local), Retrofit (remote), offline-first repository, Hilt setup
-├── ui/          theme, shared composables, formatting helpers
-└── feature/     list, detail, form — each with a ViewModel, Screen, and Content
+├── navigation/  screen navigation
+├── domain/      models and use cases, plain Kotlin
+├── data/        Room, Retrofit, repository, Hilt setup
+├── ui/          theme and shared components
+└── feature/     list, detail, and form screens
 ```
 
-Each ViewModel exposes one `StateFlow` UI state. Features don't call each other; they communicate through the repository and Room.
+### Tests and toolchain
 
-**Tests:** `./gradlew :app:testDebugUnitTest`
-
-**Toolchain:** AGP 9.4.0, Gradle 9.6.0, JDK 17, Android SDK 37.
+- Run the tests with `./gradlew :app:testDebugUnitTest`.
+- The project uses AGP 9.4.0, Gradle 9.6.0, JDK 17, and Android SDK 37.
 
 ## Next steps
 
 **API**
-- Publish an OpenAPI document; field limits and error codes are currently mirrored by hand in three places.
 - Add optimistic concurrency (ETag + `If-Match`) so concurrent edits can't silently overwrite each other.
 - Make creates idempotent (`Idempotency-Key`) so retries on a weak connection can't duplicate a report.
 
