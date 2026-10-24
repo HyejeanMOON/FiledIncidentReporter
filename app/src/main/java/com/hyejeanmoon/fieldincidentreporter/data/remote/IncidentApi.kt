@@ -4,7 +4,6 @@ import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentBody
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentDto
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentPageDto
 import okhttp3.MultipartBody
-import retrofit2.Response
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
@@ -34,6 +33,7 @@ internal interface IncidentApi {
         @Part photos: List<MultipartBody.Part>,
     ): IncidentDto
 
+    /** Throws [retrofit2.HttpException] unless the server confirms the delete. */
     @DELETE("incidents/{id}")
-    suspend fun delete(@Path("id") id: String): Response<Unit>
+    suspend fun delete(@Path("id") id: String)
 }

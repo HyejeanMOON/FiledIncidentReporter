@@ -20,7 +20,6 @@ sealed interface IncidentFormUiState {
         val description: String = "",
         val photos: List<IncidentPhoto> = emptyList(),
         val originalPhotoIds: List<String> = emptyList(),
-        val missingFields: List<RequiredIncidentField> = emptyList(),
         val focusedFields: Set<RequiredIncidentField> = emptySet(),
         /** Fields the user has visited; only these show a "required" error. */
         val validatedFields: Set<RequiredIncidentField> = emptySet(),
@@ -32,6 +31,8 @@ sealed interface IncidentFormUiState {
         val isEditing: Boolean get() = incidentId != null
 
         val canEdit: Boolean get() = !isSaving && !isSaved
+
+        val missingFields: List<RequiredIncidentField> get() = toDraft().missingFields()
 
         val isSubmitEnabled: Boolean get() = canEdit && missingFields.isEmpty()
 

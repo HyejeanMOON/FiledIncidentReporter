@@ -28,7 +28,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import okhttp3.MultipartBody
-import retrofit2.HttpException
 import retrofit2.Retrofit
 import javax.inject.Inject
 
@@ -69,10 +68,7 @@ internal class OfflineFirstIncidentRepository @Inject constructor(
     }
 
     override suspend fun delete(id: String) {
-        incidentRequest {
-            val response = api.delete(id)
-            if (!response.isSuccessful) throw HttpException(response)
-        }
+        incidentRequest { api.delete(id) }
         updateCache("delete") { dao.delete(listOf(id)) }
     }
 

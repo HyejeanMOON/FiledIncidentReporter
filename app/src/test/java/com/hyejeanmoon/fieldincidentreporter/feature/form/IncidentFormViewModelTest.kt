@@ -10,7 +10,6 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeCapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.testing.MainDispatcherRule
@@ -32,7 +31,7 @@ class IncidentFormViewModelTest {
         mutableMapOf("incident-1" to testIncident().copy(photos = listOf(first, second))),
     )
 
-    private val reducer = IncidentFormReducer(ValidateIncidentDraftUseCase())
+    private val reducer = IncidentFormReducer()
     private val capturedPhotos = FakeCapturedPhotoStore()
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) = IncidentFormViewModel(
@@ -185,7 +184,7 @@ class IncidentFormViewModelTest {
     fun `an unreadable saved form is ignored`() {
         val viewModel = viewModel(SavedStateHandle(mapOf(IncidentFormViewModel.SAVED_FORM_KEY to "not json")))
 
-        assertEquals(reducer.validated(IncidentFormUiState.Ready()), viewModel.uiState.value)
+        assertEquals(IncidentFormUiState.Ready(), viewModel.uiState.value)
     }
 
     private fun editHandle() = SavedStateHandle(mapOf("incidentId" to "incident-1"))

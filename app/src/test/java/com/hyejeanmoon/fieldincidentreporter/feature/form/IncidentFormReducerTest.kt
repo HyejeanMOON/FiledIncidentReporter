@@ -2,15 +2,15 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_PHOTOS
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class IncidentFormReducerTest {
-    private val reducer = IncidentFormReducer(ValidateIncidentDraftUseCase())
-    private val empty = reducer.validated(IncidentFormUiState.Ready())
+    private val reducer = IncidentFormReducer()
+    private val empty = IncidentFormUiState.Ready()
 
     private val complete = empty.after(
         IncidentFormUiEvent.TitleChanged("Title"),
@@ -35,6 +35,14 @@ class IncidentFormReducerTest {
     fun `cancelling the photo picker with no photos reveals the photos error`() {
         val state = empty.after(IncidentFormUiEvent.PhotoInputCancelled)
         assertEquals(listOf(RequiredIncidentField.PHOTOS), state.visibleMissingFields)
+    }
+
+    @Test
+    fun `choosing more photos than allowed reveals the photos error`() {
+        val tooMany = List(MAX_INCIDENT_PHOTOS + 1) { "content://photos/$it" }
+
+        assertEquals(emptyList<RequiredIncidentField>(), complete.visibleMissingFields)
+        assertEquals(listOf(RequiredIncidentField.PHOTOS), empty.after(IncidentFormUiEvent.PhotosSelected(tooMany)).visibleMissingFields)
     }
 
     @Test
@@ -120,7 +128,7 @@ class IncidentFormReducerTest {
         val state = complete.after(IncidentFormUiEvent.PhotoInputCancelled)
 
         assertEquals(complete.photos, state.photos)
-        assertEquals(emptySet<RequiredIncidentField>(), state.validatedFields)
+        assertEquals(emptyList<RequiredIncidentField>(), state.visibleMissingFields)
     }
 
     @Test

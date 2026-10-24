@@ -54,6 +54,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hyejeanmoon.fieldincidentreporter.R
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_DESCRIPTION_LENGTH
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_LOCATION_LENGTH
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_TITLE_LENGTH
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.ui.component.BackTopAppBar
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
@@ -136,6 +139,7 @@ internal fun IncidentFormContent(
             RequiredTextField(
                 field = RequiredIncidentField.TITLE,
                 value = uiState.title,
+                maxLength = MAX_INCIDENT_TITLE_LENGTH,
                 onValueChange = { onEvent(IncidentFormUiEvent.TitleChanged(it)) },
                 labelRes = R.string.incident_title_label,
                 isError = RequiredIncidentField.TITLE in missingFields,
@@ -145,6 +149,7 @@ internal fun IncidentFormContent(
             RequiredTextField(
                 field = RequiredIncidentField.LOCATION,
                 value = uiState.location,
+                maxLength = MAX_INCIDENT_LOCATION_LENGTH,
                 onValueChange = { onEvent(IncidentFormUiEvent.LocationChanged(it)) },
                 labelRes = R.string.location_label,
                 isError = RequiredIncidentField.LOCATION in missingFields,
@@ -154,6 +159,7 @@ internal fun IncidentFormContent(
             RequiredTextField(
                 field = RequiredIncidentField.DESCRIPTION,
                 value = uiState.description,
+                maxLength = MAX_INCIDENT_DESCRIPTION_LENGTH,
                 onValueChange = { onEvent(IncidentFormUiEvent.DescriptionChanged(it)) },
                 labelRes = R.string.description_label,
                 isError = RequiredIncidentField.DESCRIPTION in missingFields,
@@ -190,6 +196,7 @@ internal fun IncidentFormContent(
 private fun RequiredTextField(
     field: RequiredIncidentField,
     value: String,
+    maxLength: Int,
     onValueChange: (String) -> Unit,
     @StringRes labelRes: Int,
     isError: Boolean,
@@ -197,7 +204,6 @@ private fun RequiredTextField(
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
     val multiline = field == RequiredIncidentField.DESCRIPTION
-    val maxLength = checkNotNull(field.maxLength)
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,

@@ -3,8 +3,10 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_DESCRIPTION_LENGTH
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_LOCATION_LENGTH
+import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_TITLE_LENGTH
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import javax.inject.Inject
 
 /** The outcome of loading or saving, fed back into [IncidentFormReducer]. */
@@ -19,33 +21,29 @@ sealed interface IncidentFormResult {
  * Computes each form state from the previous one. It only marks loading or saving as started;
  * [IncidentFormViewModel] does that work and reports back with an [IncidentFormResult].
  */
-class IncidentFormReducer @Inject constructor(
-    private val validateIncidentDraft: ValidateIncidentDraftUseCase,
-) {
+class IncidentFormReducer @Inject constructor() {
     fun reduce(state: IncidentFormUiState, event: IncidentFormUiEvent): IncidentFormUiState = when (state) {
         IncidentFormUiState.Loading -> state
         is IncidentFormUiState.LoadFailed -> if (event == IncidentFormUiEvent.Retry) IncidentFormUiState.Loading else state
-        is IncidentFormUiState.Ready -> validated(state.reduce(event))
+        is IncidentFormUiState.Ready -> state.reduce(event)
     }
 
     fun reduce(state: IncidentFormUiState, result: IncidentFormResult): IncidentFormUiState = when (result) {
-        is IncidentFormResult.Loaded -> validated(formOf(result.incident))
+        is IncidentFormResult.Loaded -> formOf(result.incident)
         is IncidentFormResult.LoadFailed -> IncidentFormUiState.LoadFailed(result.failure)
         IncidentFormResult.Saved -> state.ifReady { copy(isSaving = false, isSaved = true) }
         is IncidentFormResult.SaveFailed -> state.ifReady { copy(isSaving = false, error = result.failure) }
     }
-
-    fun validated(state: IncidentFormUiState.Ready) = state.copy(missingFields = validateIncidentDraft(state.toDraft()))
 }
 
 private fun IncidentFormUiState.Ready.reduce(event: IncidentFormUiEvent): IncidentFormUiState.Ready = when (event) {
-    is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value.limitTo(RequiredIncidentField.TITLE)) }
-    is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value.limitTo(RequiredIncidentField.LOCATION)) }
-    is IncidentFormUiEvent.DescriptionChanged -> edit {
-        copy(description = event.value.limitTo(RequiredIncidentField.DESCRIPTION))
-    }
+    // Typing or pasting stops at the field's limit, as an HTML `maxlength` does.
+    is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value.take(MAX_INCIDENT_TITLE_LENGTH)) }
+    is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value.take(MAX_INCIDENT_LOCATION_LENGTH)) }
+    is IncidentFormUiEvent.DescriptionChanged -> edit { copy(description = event.value.take(MAX_INCIDENT_DESCRIPTION_LENGTH)) }
+    // Photos are added with a button, not a focusable field, so choosing them is what reveals their error.
     is IncidentFormUiEvent.PhotosSelected -> edit {
-        copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
+        copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct()).photosVisited()
     }
     is IncidentFormUiEvent.PhotoRemoved -> edit { copy(photos = photos - event.photo).photosVisited() }
     IncidentFormUiEvent.PhotosRemoved -> edit { copy(photos = emptyList()).photosVisited() }
@@ -70,9 +68,6 @@ private inline fun IncidentFormUiState.Ready.edit(transform: IncidentFormUiState
 private inline fun IncidentFormUiState.ifReady(
     transform: IncidentFormUiState.Ready.() -> IncidentFormUiState,
 ) = if (this is IncidentFormUiState.Ready) transform() else this
-
-/** Stops typing or pasting at the field's limit, as an HTML `maxlength` does. */
-private fun String.limitTo(field: RequiredIncidentField) = take(checkNotNull(field.maxLength))
 
 private fun IncidentFormUiState.Ready.photosVisited() =
     copy(validatedFields = validatedFields + RequiredIncidentField.PHOTOS)

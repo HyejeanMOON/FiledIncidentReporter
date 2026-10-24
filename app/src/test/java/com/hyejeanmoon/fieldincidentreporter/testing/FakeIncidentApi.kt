@@ -57,11 +57,10 @@ internal class FakeIncidentApi(var incidents: List<IncidentDto>) : IncidentApi {
         return updated
     }
 
-    override suspend fun delete(id: String): Response<Unit> {
+    override suspend fun delete(id: String) {
         failure?.let { throw it }
-        if (incidents.none { it.id == id }) return Response.error(404, "".toResponseBody())
+        if (incidents.none { it.id == id }) throw HttpException(Response.error<Unit>(404, "".toResponseBody()))
         incidents = incidents.filterNot { it.id == id }
-        return Response.success(Unit)
     }
 }
 

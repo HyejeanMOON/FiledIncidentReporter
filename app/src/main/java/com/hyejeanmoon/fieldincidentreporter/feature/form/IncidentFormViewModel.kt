@@ -28,8 +28,7 @@ class IncidentFormViewModel @Inject constructor(
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentFormRoute().incidentId
     private val _uiState = MutableStateFlow(
-        restoreForm()?.let(reducer::validated)
-            ?: if (incidentId != null) IncidentFormUiState.Loading else reducer.validated(IncidentFormUiState.Ready()),
+        restoreForm() ?: if (incidentId != null) IncidentFormUiState.Loading else IncidentFormUiState.Ready(),
     )
     val uiState = _uiState.asStateFlow()
 
