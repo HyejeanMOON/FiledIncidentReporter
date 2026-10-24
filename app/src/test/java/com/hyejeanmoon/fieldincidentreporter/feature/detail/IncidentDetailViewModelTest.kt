@@ -45,4 +45,38 @@ class IncidentDetailViewModelTest {
             viewModel.uiState.value,
         )
     }
+
+    @Test
+    fun `failed delete keeps the report and shows the error`() {
+        val viewModel = viewModel()
+        repository.failure = IncidentException(IncidentFailure.SERVER_ERROR, IOException())
+        viewModel.onAction(IncidentDetailAction.Delete)
+
+        assertEquals(
+            IncidentDetailUiState.Loaded(testIncident(), error = IncidentFailure.SERVER_ERROR),
+            viewModel.uiState.value,
+        )
+
+        repository.failure = null
+        viewModel.onAction(IncidentDetailAction.ErrorDismissed)
+        viewModel.onAction(IncidentDetailAction.Delete)
+        assertEquals(true, (viewModel.uiState.value as IncidentDetailUiState.Loaded).isDeleted)
+    }
+
+    @Test
+    fun `an untranslated error is shown as unexpected`() {
+        repository.failure = IllegalStateException("bug")
+
+        assertEquals(IncidentDetailUiState.LoadFailed(IncidentFailure.UNEXPECTED), viewModel().uiState.value)
+    }
+
+    @Test
+    fun `retry does not reload a report that is already loaded`() {
+        val viewModel = viewModel()
+        // Reloading would fail, so the loaded state staying shows that nothing was reloaded.
+        repository.failure = IncidentException(IncidentFailure.NETWORK_UNAVAILABLE, IOException())
+        viewModel.onAction(IncidentDetailAction.Retry)
+
+        assertEquals(IncidentDetailUiState.Loaded(testIncident()), viewModel.uiState.value)
+    }
 }

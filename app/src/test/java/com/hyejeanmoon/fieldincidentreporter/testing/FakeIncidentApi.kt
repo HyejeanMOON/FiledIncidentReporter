@@ -14,6 +14,8 @@ import java.time.Instant
 internal class FakeIncidentApi(var incidents: List<IncidentDto>) : IncidentApi {
     var failure: Throwable? = null
     val requestedCursors = mutableListOf<String?>()
+    /** The report id (null for a create), body, and number of uploaded photos of each write. */
+    val writes = mutableListOf<Triple<String?, IncidentBody, Int>>()
 
     override suspend fun getIncidents(cursor: String?, size: Int): IncidentPageDto {
         requestedCursors += cursor
@@ -28,13 +30,39 @@ internal class FakeIncidentApi(var incidents: List<IncidentDto>) : IncidentApi {
         return incidents.find { it.id == id } ?: throw HttpException(Response.error<IncidentDto>(404, "".toResponseBody()))
     }
 
-    override suspend fun create(incident: IncidentBody, photos: List<MultipartBody.Part>): IncidentDto =
-        error("Not used by these tests")
+    override suspend fun create(incident: IncidentBody, photos: List<MultipartBody.Part>): IncidentDto {
+        writes += Triple(null, incident, photos.size)
+        failure?.let { throw it }
+        val time = Instant.parse(incidents.firstOrNull()?.createdAt ?: testTime.toString()).plusSeconds(60).toString()
+        val created = IncidentDto(
+            "incident-new", incident.title, incident.location, incident.description,
+            createdAt = time, updatedAt = time,
+        )
+        incidents = listOf(created) + incidents
+        return created
+    }
 
-    override suspend fun update(id: String, incident: IncidentBody, photos: List<MultipartBody.Part>): IncidentDto =
-        error("Not used by these tests")
+    override suspend fun update(id: String, incident: IncidentBody, photos: List<MultipartBody.Part>): IncidentDto {
+        writes += Triple(id, incident, photos.size)
+        failure?.let { throw it }
+        val old = incidents.find { it.id == id } ?: throw HttpException(Response.error<IncidentDto>(404, "".toResponseBody()))
+        val updated = old.copy(
+            title = incident.title,
+            location = incident.location,
+            description = incident.description,
+            photos = old.photos.filterNot { it.id in incident.deletePhotoIds.orEmpty() },
+            updatedAt = Instant.parse(old.updatedAt).plusSeconds(60).toString(),
+        )
+        incidents = incidents.map { if (it.id == id) updated else it }
+        return updated
+    }
 
-    override suspend fun delete(id: String): Response<Unit> = error("Not used by these tests")
+    override suspend fun delete(id: String): Response<Unit> {
+        failure?.let { throw it }
+        if (incidents.none { it.id == id }) return Response.error(404, "".toResponseBody())
+        incidents = incidents.filterNot { it.id == id }
+        return Response.success(Unit)
+    }
 }
 
 /** The cursor of a page that ends with [incident]: its position, which stays valid if the report is deleted. */

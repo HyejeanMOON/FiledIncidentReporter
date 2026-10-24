@@ -37,4 +37,40 @@ class IncidentDetailReducerTest {
         assertEquals(loaded.copy(error = IncidentFailure.SERVER_ERROR), failed)
         assertEquals(loaded, reducer.reduce(failed, IncidentDetailAction.ErrorDismissed))
     }
+
+    @Test
+    fun `a loaded report replaces the loading state`() {
+        assertEquals(loaded, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailResult.Loaded(testIncident())))
+    }
+
+    @Test
+    fun `a finished delete keeps the controls disabled`() {
+        val deleting = reducer.reduce(loaded, IncidentDetailAction.Delete)
+
+        assertEquals(
+            loaded.copy(isDeleting = true, isDeleted = true),
+            reducer.reduce(deleting, IncidentDetailResult.Deleted),
+        )
+    }
+
+    @Test
+    fun `delete clears an error left from the last attempt`() {
+        val failed = loaded.copy(error = IncidentFailure.SERVER_ERROR)
+
+        assertEquals(loaded.copy(isDeleting = true), reducer.reduce(failed, IncidentDetailAction.Delete))
+    }
+
+    @Test
+    fun `actions and delete results need a loaded report`() {
+        val failed = IncidentDetailUiState.LoadFailed(IncidentFailure.INCIDENT_NOT_FOUND)
+
+        assertEquals(IncidentDetailUiState.Loading, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailAction.Retry))
+        assertEquals(failed, reducer.reduce(failed, IncidentDetailAction.Delete))
+        assertEquals(failed, reducer.reduce(failed, IncidentDetailAction.ErrorDismissed))
+        assertEquals(IncidentDetailUiState.Loading, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailResult.Deleted))
+        assertEquals(
+            failed,
+            reducer.reduce(failed, IncidentDetailResult.DeleteFailed(IncidentFailure.SERVER_ERROR)),
+        )
+    }
 }

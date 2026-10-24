@@ -1,15 +1,20 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import androidx.lifecycle.SavedStateHandle
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
+import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.testing.MainDispatcherRule
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 class IncidentFormViewModelTest {
     @get:Rule
@@ -21,11 +26,13 @@ class IncidentFormViewModelTest {
         mutableMapOf("incident-1" to testIncident().copy(photos = listOf(first, second))),
     )
 
+    private val reducer = IncidentFormReducer(ValidateIncidentDraftUseCase())
+
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) = IncidentFormViewModel(
         handle,
         repository,
         SaveIncidentUseCase(repository),
-        IncidentFormReducer(ValidateIncidentDraftUseCase()),
+        reducer,
     )
 
     private val IncidentFormViewModel.form get() = uiState.value as IncidentFormUiState.Ready
@@ -70,5 +77,90 @@ class IncidentFormViewModelTest {
 
         restored.onEvent(IncidentFormUiEvent.PhotoRemoved(first))
         assertEquals(listOf("photo-A"), restored.form.deletedPhotoIds)
+    }
+
+    @Test
+    fun `a new report starts empty and is created on submit`() = runTest {
+        val viewModel = viewModel()
+        assertEquals(false, viewModel.form.isEditing)
+        assertEquals(RequiredIncidentField.entries, viewModel.form.missingFields)
+
+        viewModel.fill()
+        viewModel.onEvent(IncidentFormUiEvent.Submit)
+
+        assertEquals(true, viewModel.form.isSaved)
+        assertEquals(emptyList<Any>(), repository.updates)
+        assertEquals("Leak", repository.getIncident("new").title)
+    }
+
+    @Test
+    fun `editing loads the report into the form`() {
+        val form = viewModel(editHandle()).form
+
+        assertEquals(true, form.isEditing)
+        assertEquals("Title", form.title)
+        assertEquals(listOf(first, second), form.photos)
+        assertEquals(true, form.isSubmitEnabled)
+    }
+
+    @Test
+    fun `failed load of the report to edit can be retried`() {
+        repository.failure = IncidentException(IncidentFailure.NETWORK_UNAVAILABLE, IOException())
+        val viewModel = viewModel(editHandle())
+        assertEquals(IncidentFormUiState.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE), viewModel.uiState.value)
+
+        repository.failure = null
+        viewModel.onEvent(IncidentFormUiEvent.Retry)
+
+        assertEquals("Title", viewModel.form.title)
+    }
+
+    @Test
+    fun `failed save shows the error and keeps the edits`() {
+        val viewModel = viewModel()
+        viewModel.fill()
+        repository.failure = IncidentException(IncidentFailure.UPLOAD_TOO_LARGE, IOException())
+        viewModel.onEvent(IncidentFormUiEvent.Submit)
+
+        assertEquals(IncidentFailure.UPLOAD_TOO_LARGE, viewModel.form.error)
+        assertEquals("Leak", viewModel.form.title)
+        assertEquals(true, viewModel.form.isSubmitEnabled)
+
+        repository.failure = null
+        viewModel.onEvent(IncidentFormUiEvent.ErrorDismissed)
+        viewModel.onEvent(IncidentFormUiEvent.Submit)
+        assertEquals(true, viewModel.form.isSaved)
+    }
+
+    @Test
+    fun `restored form keeps the errors already revealed and skips loading`() {
+        val handle = editHandle()
+        viewModel(handle).run {
+            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.TITLE, true))
+            onEvent(IncidentFormUiEvent.TitleChanged(""))
+            onEvent(IncidentFormUiEvent.FieldFocusChanged(RequiredIncidentField.TITLE, false))
+        }
+
+        // Loading would replace the restored edits, so a failing repository shows it is not called.
+        repository.failure = IncidentException(IncidentFailure.NETWORK_UNAVAILABLE, IOException())
+        val restored = viewModel(handle)
+        assertEquals("", restored.form.title)
+        assertEquals(listOf(RequiredIncidentField.TITLE), restored.form.visibleMissingFields)
+    }
+
+    @Test
+    fun `an unreadable saved form is ignored`() {
+        val viewModel = viewModel(SavedStateHandle(mapOf(IncidentFormViewModel.SAVED_FORM_KEY to "not json")))
+
+        assertEquals(reducer.validated(IncidentFormUiState.Ready()), viewModel.uiState.value)
+    }
+
+    private fun editHandle() = SavedStateHandle(mapOf("incidentId" to "incident-1"))
+
+    private fun IncidentFormViewModel.fill() {
+        onEvent(IncidentFormUiEvent.TitleChanged("Leak"))
+        onEvent(IncidentFormUiEvent.LocationChanged("Bay"))
+        onEvent(IncidentFormUiEvent.DescriptionChanged("Pipe"))
+        onEvent(IncidentFormUiEvent.PhotosSelected(listOf("content://photos/1")))
     }
 }

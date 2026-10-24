@@ -115,6 +115,26 @@ class IncidentRemoteMediatorTest {
         assertEquals(cached, dao.list)
     }
 
+    @Test
+    fun `refresh of an empty server list clears the cache`() = runTest {
+        val dao = FakeIncidentDao(reports(0 until 5).map { it.cached() })
+        val mediator = IncidentRemoteMediator(FakeIncidentApi(emptyList()), dao, baseUrl)
+
+        assertEquals(true, mediator.load(LoadType.REFRESH, state).endOfPagination())
+        assertEquals(emptyList<IncidentEntity>(), dao.list)
+    }
+
+    @Test
+    fun `prepend and an append after the last page do not call the server`() = runTest {
+        val api = FakeIncidentApi(reports(0 until 5))
+        val mediator = IncidentRemoteMediator(api, FakeIncidentDao(), baseUrl)
+
+        assertEquals(true, mediator.load(LoadType.PREPEND, state).endOfPagination())
+        mediator.load(LoadType.REFRESH, state)
+        assertEquals(true, mediator.load(LoadType.APPEND, state).endOfPagination())
+        assertEquals(listOf(null), api.requestedCursors)
+    }
+
     private fun MediatorResult.endOfPagination() = (this as MediatorResult.Success).endOfPaginationReached
 
     private fun IncidentDto.cached() = toIncident(baseUrl).toEntity()

@@ -1,8 +1,10 @@
 package com.hyejeanmoon.fieldincidentreporter.data.local
 
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
+import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentDao
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident
 import com.hyejeanmoon.fieldincidentreporter.testing.testTime
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -29,6 +31,29 @@ class IncidentCacheTest {
         val stale = testIncident(title = "Stale").toEntity()
 
         assertEquals(PageChanges(emptyList(), emptyList()), pageChanges(cached = listOf(saved), page = listOf(stale)))
+    }
+
+    @Test
+    fun `refreshing a cached report skips identical and older copies`() = runTest {
+        val saved = testIncident(title = "Saved").copy(updatedAt = testTime.plusSeconds(60)).toEntity()
+        val dao = FakeIncidentDao(listOf(saved))
+
+        dao.refreshCached(saved)
+        dao.refreshCached(testIncident(title = "Stale").toEntity())
+        assertEquals(emptyList<IncidentEntity>(), dao.upserted)
+
+        val newer = testIncident(title = "Newer").copy(updatedAt = testTime.plusSeconds(120)).toEntity()
+        dao.refreshCached(newer)
+        assertEquals(listOf(newer), dao.list)
+    }
+
+    @Test
+    fun `last page with no reports clears the cache after the page before`() = runTest {
+        val rows = listOf(testIncident("c"), testIncident("b"), testIncident("a")).map { it.toEntity() }
+        val dao = FakeIncidentDao(rows)
+
+        assertEquals(false, dao.syncPage(emptyList(), previous = rows[0], isLastPage = true))
+        assertEquals(listOf("c"), dao.list.map { it.id })
     }
 
     @Test

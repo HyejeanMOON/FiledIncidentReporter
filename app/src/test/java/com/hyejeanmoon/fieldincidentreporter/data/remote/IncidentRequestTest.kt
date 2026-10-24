@@ -34,6 +34,45 @@ class IncidentRequestTest {
         assertEquals(IncidentFailure.NETWORK_UNAVAILABLE, failureOf(IOException("offline")))
     }
 
+    @Test
+    fun `every problem code maps to its failure`() {
+        assertEquals(IncidentFailure.INCIDENT_NOT_FOUND, failureForApiError("RESOURCE_NOT_FOUND", 404))
+        assertEquals(IncidentFailure.MALFORMED_REQUEST, failureForApiError("INVALID_REQUEST", 400))
+        // The code wins even when the status says otherwise.
+        assertEquals(IncidentFailure.INCIDENT_VALIDATION_FAILED, failureForApiError("INVALID_INCIDENT", 500))
+    }
+
+    @Test
+    fun `unknown codes fall back to the HTTP status`() {
+        listOf(400, 405, 415, 422).forEach { status ->
+            assertEquals(IncidentFailure.MALFORMED_REQUEST, failureForApiError("SOMETHING_NEW", status))
+        }
+        assertEquals(IncidentFailure.UPLOAD_TOO_LARGE, failureForApiError(null, 413))
+        assertEquals(IncidentFailure.SERVER_ERROR, failureForApiError(null, 500))
+    }
+
+    @Test
+    fun `a code that is not a string is ignored`() {
+        val body = """{"code":404}""".toResponseBody("application/problem+json".toMediaType())
+
+        assertEquals(IncidentFailure.MALFORMED_REQUEST, HttpException(Response.error<Any>(422, body)).toIncidentFailure())
+    }
+
+    @Test
+    fun `a request returns its result and translates HTTP errors`() = runTest {
+        assertEquals("ok", incidentRequest { "ok" })
+
+        val failure = runCatching { incidentRequest<Unit> { throw error(404, "INCIDENT_NOT_FOUND") } }.exceptionOrNull()
+        assertEquals(IncidentFailure.INCIDENT_NOT_FOUND, (failure as IncidentException).failure)
+    }
+
+    @Test
+    fun `other exceptions are not translated`() = runTest {
+        val bug = IllegalStateException("bug")
+
+        assertEquals(bug, runCatching { incidentRequest<Unit> { throw bug } }.exceptionOrNull())
+    }
+
     private suspend fun failureOf(error: IOException): IncidentFailure =
         (runCatching { incidentRequest<Unit> { throw error } }.exceptionOrNull() as IncidentException).failure
 
