@@ -9,7 +9,6 @@ import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepositor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -17,6 +16,7 @@ import javax.inject.Inject
 class IncidentDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: IncidentRepository,
+    private val reducer: IncidentDetailReducer,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentDetailRoute().incidentId
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
@@ -27,33 +27,31 @@ class IncidentDetailViewModel @Inject constructor(
     }
 
     fun onAction(action: IncidentDetailAction) {
-        when (action) {
-            IncidentDetailAction.Retry -> load()
-            IncidentDetailAction.Delete -> delete()
-            IncidentDetailAction.ErrorDismissed -> _uiState.update { it.copy(error = null) }
-        }
+        val previous = _uiState.value
+        val state = reducer.reduce(previous, action)
+        _uiState.value = state
+        // The reducer only marks the work as started; it runs here.
+        if (state.isLoading && !previous.isLoading) load()
+        if (state.isDeleting && !previous.isDeleting) delete()
     }
 
     private fun load() {
-        _uiState.update { it.copy(loadFailure = null) }
         viewModelScope.launch {
             runSuspendCatching { repository.getIncident(incidentId) }
-                .onSuccess { incident -> _uiState.update { it.copy(incident = incident) } }
-                .onFailure { error -> _uiState.update { it.copy(loadFailure = error.toIncidentFailure()) } }
+                .onSuccess { onResult(IncidentDetailResult.Loaded(it)) }
+                .onFailure { onResult(IncidentDetailResult.LoadFailed(it.toIncidentFailure())) }
         }
     }
 
     private fun delete() {
-        val state = _uiState.value
-        if (state.incident == null || state.isDeleting) return
-        _uiState.update { it.copy(isDeleting = true, error = null) }
         viewModelScope.launch {
             runSuspendCatching { repository.delete(incidentId) }
-                // Stay in the deleting state so that nothing can be pressed while the screen closes.
-                .onSuccess { _uiState.update { it.copy(isDeleted = true) } }
-                .onFailure { error ->
-                    _uiState.update { it.copy(isDeleting = false, error = error.toIncidentFailure()) }
-                }
+                .onSuccess { onResult(IncidentDetailResult.Deleted) }
+                .onFailure { onResult(IncidentDetailResult.DeleteFailed(it.toIncidentFailure())) }
         }
+    }
+
+    private fun onResult(result: IncidentDetailResult) {
+        _uiState.value = reducer.reduce(_uiState.value, result)
     }
 }

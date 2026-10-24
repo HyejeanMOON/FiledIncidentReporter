@@ -20,6 +20,7 @@ class IncidentDetailViewModelTest {
     private fun viewModel() = IncidentDetailViewModel(
         SavedStateHandle(mapOf("incidentId" to "incident-1")),
         repository,
+        IncidentDetailReducer(),
     )
 
     @Test

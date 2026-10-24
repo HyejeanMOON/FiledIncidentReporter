@@ -4,6 +4,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 
 data class IncidentDetailUiState(
+    val isLoading: Boolean = true,
     val incident: Incident? = null,
     /** Set when the report could not be loaded at all. */
     val loadFailure: IncidentFailure? = null,
