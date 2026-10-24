@@ -178,6 +178,24 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
+    fun `cursor continues after its incident even once that incident is deleted`() {
+        val ids = (0 until 3).map { JsonPath.read<String>(create("Cursor $it").andReturn().response.contentAsString, "$.id") }
+        val first = mvc.perform(get("/incidents?size=1"))
+            .andExpect(jsonPath("$.items[0].id").value(ids[2]))
+            .andExpect(jsonPath("$.nextCursor").isString)
+            .andReturn().response.contentAsString
+        mvc.perform(delete("/incidents/${ids[2]}")).andExpect(status().isNoContent)
+
+        mvc.perform(get("/incidents?size=2").param("cursor", nextCursor(first)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items[0].id").value(ids[1]))
+            .andExpect(jsonPath("$.items[1].id").value(ids[0]))
+            .andExpect(jsonPath("$.page").value(null))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.nextCursor").value(null))
+    }
+
+    @Test
     fun `resolution can be set reopened and set again without losing the original transition time`() {
         val created = create("Resolution workflow").andReturn().response.contentAsString
         val id = JsonPath.read<String>(created, "$.id")
@@ -265,9 +283,15 @@ class IncidentApiTests @Autowired constructor(
     }
 
     @Test
-    fun `invalid page size is rejected`() {
-        mvc.perform(get("/incidents?page=0&size=101")).andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+    fun `invalid page size or cursor is rejected`() {
+        create("Cursor source").andExpect(status().isCreated)
+        create("Cursor target").andExpect(status().isCreated)
+        val cursor = nextCursor(mvc.perform(get("/incidents?size=1")).andReturn().response.contentAsString)
+
+        listOf("page=0&size=101", "page=-1", "cursor=not-a-cursor", "page=0&cursor=$cursor").forEach { query ->
+            mvc.perform(get("/incidents?$query")).andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+        }
     }
 
     @Test
@@ -358,6 +382,8 @@ class IncidentApiTests @Autowired constructor(
         }
         return mvc.perform(request)
     }
+
+    private fun nextCursor(page: String) = JsonPath.read<String>(page, "$.nextCursor")
 
     private fun resolution(id: String, resolved: Boolean): ResultActions = mvc.perform(
         patch("/incidents/$id/resolution")

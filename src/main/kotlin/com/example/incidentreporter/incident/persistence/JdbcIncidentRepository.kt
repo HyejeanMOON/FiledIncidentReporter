@@ -3,6 +3,7 @@ package com.example.incidentreporter.incident.persistence
 import com.example.incidentreporter.incident.domain.Incident
 import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
+import com.example.incidentreporter.incident.domain.IncidentPosition
 import com.example.incidentreporter.incident.domain.IncidentRepository
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
@@ -59,9 +60,15 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .update()
     }
 
-    override fun findPage(page: Int, size: Int, query: String?, resolved: Boolean?): IncidentPage {
+    override fun findPage(after: IncidentPosition?, offset: Long, size: Int, query: String?, resolved: Boolean?): IncidentPage {
         val filters = mutableListOf<String>()
-        val params = mutableMapOf<String, Any>("limit" to size + 1, "offset" to page.toLong() * size)
+        val params = mutableMapOf<String, Any>("limit" to size + 1, "offset" to offset)
+        if (after != null) {
+            // Continues right after the position, so incidents added or deleted before it do not shift the page.
+            filters += "(created_at < :afterCreatedAt OR (created_at = :afterCreatedAt AND id < :afterId))"
+            params["afterCreatedAt"] = after.createdAt.toUtc()
+            params["afterId"] = after.id
+        }
         if (query != null) {
             val escaped = query.lowercase(Locale.ROOT)
                 .replace("!", "!!")
@@ -79,10 +86,11 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .query { rs, _ -> mapIncident(rs) }
             .list()
         val pageRows = rows.take(size)
-        if (pageRows.isEmpty()) return IncidentPage(emptyList(), page, size, false)
+        if (pageRows.isEmpty()) return IncidentPage(emptyList(), null)
 
         val photos = findPhotos(pageRows.map(Incident::id))
-        return IncidentPage(pageRows.map { it.copy(photos = photos[it.id].orEmpty()) }, page, size, rows.size > size)
+        val next = pageRows.last().takeIf { rows.size > size }?.let { IncidentPosition(it.createdAt, it.id) }
+        return IncidentPage(pageRows.map { it.copy(photos = photos[it.id].orEmpty()) }, next)
     }
 
     override fun insert(incident: Incident) {

@@ -5,6 +5,7 @@ import com.example.incidentreporter.incident.domain.IncidentInput
 import com.example.incidentreporter.incident.domain.IncidentNotFoundException
 import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
+import com.example.incidentreporter.incident.domain.IncidentPosition
 import com.example.incidentreporter.incident.domain.IncidentRepository
 import com.example.incidentreporter.incident.domain.IncomingPhoto
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
@@ -64,15 +65,19 @@ class IncidentService(
     }
 
     @Transactional(readOnly = true)
-    fun list(page: Int, size: Int, query: String?, resolved: Boolean?): IncidentPage {
-        if (page < 0 || size !in 1..MAX_PAGE_SIZE) {
+    /** A numbered [page] or a position to continue [after]; neither starts at the top. */
+    fun list(page: Int?, after: IncidentPosition?, size: Int, query: String?, resolved: Boolean?): IncidentPage {
+        if (page != null && after != null) {
+            throw InvalidIncidentException("page and cursor cannot be combined")
+        }
+        if ((page ?: 0) < 0 || size !in 1..MAX_PAGE_SIZE) {
             throw InvalidIncidentException("page must be nonnegative and size must be between 1 and $MAX_PAGE_SIZE")
         }
         val normalizedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
         if (normalizedQuery != null && normalizedQuery.length > MAX_QUERY_LENGTH) {
             throw InvalidIncidentException("q must contain at most $MAX_QUERY_LENGTH characters")
         }
-        return repository.findPage(page, size, normalizedQuery, resolved)
+        return repository.findPage(after, (page ?: 0).toLong() * size, size, normalizedQuery, resolved)
     }
 
     @Transactional
