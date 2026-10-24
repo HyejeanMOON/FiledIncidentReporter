@@ -40,7 +40,6 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startTransition] = useTransition();
   const pickerRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const previewUrls = useRef(new Set<string>());
 
   useEffect(() => onSavingChange?.(isSaving), [isSaving, onSavingChange]);
@@ -57,10 +56,10 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
   // React does not type `onCancel` for inputs, so listen to the native event.
   const onPickerCancel = useEffectEvent(() => { if (!photos.length) visit("photos"); });
   useEffect(() => {
-    const inputs = [pickerRef.current, cameraRef.current];
+    const input = pickerRef.current;
     const listener = () => onPickerCancel();
-    inputs.forEach((input) => input?.addEventListener("cancel", listener));
-    return () => inputs.forEach((input) => input?.removeEventListener("cancel", listener));
+    input?.addEventListener("cancel", listener);
+    return () => input?.removeEventListener("cancel", listener);
   }, []);
 
   const addFiles = (files: FileList | null) => {
@@ -98,13 +97,13 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
     });
   };
 
-  const photoInput = (ref: typeof pickerRef, extra: { multiple?: boolean; capture?: "environment" }) => (
+  const photoInput = (
     <input
-      ref={ref}
+      ref={pickerRef}
       type="file"
       accept={photoTypes.join(",")}
       hidden
-      {...extra}
+      multiple
       onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }}
     />
   );
@@ -140,9 +139,7 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
           {showError("photos") && <p className="field-error" role="alert">Select 1 to 20 photos.</p>}
           <div className="photo-field-buttons">
             <button type="button" className="outline-button" onClick={() => pickerRef.current?.click()} onBlur={() => visit("photos")}><Icon name="image" size={16} />Choose photos</button>
-            <button type="button" className="outline-button" onClick={() => cameraRef.current?.click()} onBlur={() => visit("photos")}><Icon name="camera" size={16} />Take photo</button>
-            {photoInput(pickerRef, { multiple: true })}
-            {photoInput(cameraRef, { capture: "environment" })}
+            {photoInput}
           </div>
           {photos.length > 0 && <>
             <p className="photo-count">{photos.length} photos selected</p>
