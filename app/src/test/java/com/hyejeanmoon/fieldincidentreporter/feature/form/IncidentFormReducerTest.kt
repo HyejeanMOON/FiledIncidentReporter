@@ -88,6 +88,20 @@ class IncidentFormReducerTest {
     }
 
     @Test
+    fun `text stops at the server's length limit`() {
+        val long = "x".repeat(5000)
+        val state = empty.after(
+            IncidentFormUiEvent.TitleChanged(long),
+            IncidentFormUiEvent.LocationChanged(long),
+            IncidentFormUiEvent.DescriptionChanged(long),
+        )
+
+        assertEquals(200, state.title.length)
+        assertEquals(200, state.location.length)
+        assertEquals(4000, state.description.length)
+    }
+
+    @Test
     fun `edits revalidate the draft`() {
         assertEquals(listOf(RequiredIncidentField.TITLE), complete.after(IncidentFormUiEvent.TitleChanged("  ")).missingFields)
         assertEquals(emptyList<RequiredIncidentField>(), complete.missingFields)

@@ -19,19 +19,21 @@ internal data class IncidentEntity(
     val photos: String,
     val createdAt: Long,
     val updatedAt: Long,
+    val resolvedAt: Long?,
 )
 
 @Serializable
-private data class CachedPhoto(val id: String, val url: String)
+private data class CachedPhoto(val id: String, val url: String, val thumbnailUrl: String)
 
 internal fun Incident.toEntity() = IncidentEntity(
     id = id,
     title = title,
     location = location,
     description = description,
-    photos = Json.encodeToString(photos.filterIsInstance<IncidentPhoto.Stored>().map { CachedPhoto(it.id, it.displayUri) }),
+    photos = Json.encodeToString(photos.filterIsInstance<IncidentPhoto.Stored>().map { CachedPhoto(it.id, it.displayUri, it.thumbnailUri) }),
     createdAt = createdAt.toEpochNanos(),
     updatedAt = updatedAt.toEpochNanos(),
+    resolvedAt = resolvedAt?.toEpochNanos(),
 )
 
 internal fun IncidentEntity.toIncident() = Incident(
@@ -39,9 +41,10 @@ internal fun IncidentEntity.toIncident() = Incident(
     title = title,
     location = location,
     description = description,
-    photos = Json.decodeFromString<List<CachedPhoto>>(photos).map { IncidentPhoto.Stored(it.id, it.url) },
+    photos = Json.decodeFromString<List<CachedPhoto>>(photos).map { IncidentPhoto.Stored(it.id, it.url, it.thumbnailUrl) },
     createdAt = Instant.ofEpochSecond(0, createdAt),
     updatedAt = Instant.ofEpochSecond(0, updatedAt),
+    resolvedAt = resolvedAt?.let { Instant.ofEpochSecond(0, it) },
 )
 
 private fun Instant.toEpochNanos(): Long = Math.addExact(Math.multiplyExact(epochSecond, 1_000_000_000L), nano.toLong())

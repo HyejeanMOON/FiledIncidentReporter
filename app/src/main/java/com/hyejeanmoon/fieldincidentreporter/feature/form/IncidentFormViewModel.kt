@@ -7,6 +7,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
+import com.hyejeanmoon.fieldincidentreporter.domain.repository.CapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,7 @@ class IncidentFormViewModel @Inject constructor(
     private val repository: IncidentRepository,
     private val saveIncident: SaveIncidentUseCase,
     private val reducer: IncidentFormReducer,
+    private val capturedPhotos: CapturedPhotoStore,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentFormRoute().incidentId
     private val _uiState = MutableStateFlow(
@@ -45,6 +47,16 @@ class IncidentFormViewModel @Inject constructor(
             IncidentFormUiEvent.Submit -> save(state as IncidentFormUiState.Ready)
             else -> Unit
         }
+    }
+
+    fun newCapturedPhotoUri(): String = capturedPhotos.newPhotoUri()
+
+    /**
+     * The form has closed: a saved report's photos are on the server, and a cancelled report's are not needed.
+     * This is not called on process death, so a restored form keeps its captured photos.
+     */
+    override fun onCleared() {
+        capturedPhotos.clear()
     }
 
     private fun load() {
@@ -95,7 +107,7 @@ internal data class SavedForm(
 ) {
     /** A [storedId] marks a photo already on the server; otherwise [uri] is a local photo. */
     @Serializable
-    data class SavedPhoto(val uri: String, val storedId: String? = null)
+    data class SavedPhoto(val uri: String, val storedId: String? = null, val thumbnailUri: String? = null)
 
     fun toUiState(incidentId: String?) = IncidentFormUiState.Ready(
         incidentId = incidentId,
@@ -103,7 +115,8 @@ internal data class SavedForm(
         location = location,
         description = description,
         photos = photos.map { photo ->
-            photo.storedId?.let { IncidentPhoto.Stored(it, photo.uri) } ?: IncidentPhoto.Local(photo.uri)
+            photo.storedId?.let { IncidentPhoto.Stored(it, photo.uri, photo.thumbnailUri ?: photo.uri) }
+                ?: IncidentPhoto.Local(photo.uri)
         },
         originalPhotoIds = originalPhotoIds,
         validatedFields = validatedFields,
@@ -117,7 +130,7 @@ internal data class SavedForm(
             photos = state.photos.map { photo ->
                 when (photo) {
                     is IncidentPhoto.Local -> SavedPhoto(photo.uri)
-                    is IncidentPhoto.Stored -> SavedPhoto(photo.displayUri, photo.id)
+                    is IncidentPhoto.Stored -> SavedPhoto(photo.displayUri, photo.id, photo.thumbnailUri)
                 }
             },
             originalPhotoIds = state.originalPhotoIds,

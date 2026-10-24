@@ -39,9 +39,11 @@ class IncidentFormReducer @Inject constructor(
 }
 
 private fun IncidentFormUiState.Ready.reduce(event: IncidentFormUiEvent): IncidentFormUiState.Ready = when (event) {
-    is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value) }
-    is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value) }
-    is IncidentFormUiEvent.DescriptionChanged -> edit { copy(description = event.value) }
+    is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value.limitTo(RequiredIncidentField.TITLE)) }
+    is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value.limitTo(RequiredIncidentField.LOCATION)) }
+    is IncidentFormUiEvent.DescriptionChanged -> edit {
+        copy(description = event.value.limitTo(RequiredIncidentField.DESCRIPTION))
+    }
     is IncidentFormUiEvent.PhotosSelected -> edit {
         copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
     }
@@ -68,6 +70,9 @@ private inline fun IncidentFormUiState.Ready.edit(transform: IncidentFormUiState
 private inline fun IncidentFormUiState.ifReady(
     transform: IncidentFormUiState.Ready.() -> IncidentFormUiState,
 ) = if (this is IncidentFormUiState.Ready) transform() else this
+
+/** Stops typing or pasting at the field's limit, as an HTML `maxlength` does. */
+private fun String.limitTo(field: RequiredIncidentField) = take(checkNotNull(field.maxLength))
 
 private fun IncidentFormUiState.Ready.photosVisited() =
     copy(validatedFields = validatedFields + RequiredIncidentField.PHOTOS)

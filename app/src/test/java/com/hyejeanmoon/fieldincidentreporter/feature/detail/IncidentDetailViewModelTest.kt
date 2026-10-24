@@ -64,6 +64,16 @@ class IncidentDetailViewModelTest {
     }
 
     @Test
+    fun `reload shows the report as saved by the edit`() {
+        val viewModel = viewModel()
+        repository.incidents["incident-1"] = testIncident(title = "Edited")
+
+        viewModel.onAction(IncidentDetailAction.Reload)
+
+        assertEquals(IncidentDetailUiState.Loaded(testIncident(title = "Edited")), viewModel.uiState.value)
+    }
+
+    @Test
     fun `an untranslated error is shown as unexpected`() {
         repository.failure = IllegalStateException("bug")
 

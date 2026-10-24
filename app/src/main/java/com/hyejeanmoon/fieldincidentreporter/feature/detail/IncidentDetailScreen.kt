@@ -4,10 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +32,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.ui.component.BackTopAppBar
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentLoadFailureScreen
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentStatusBadge
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LabeledText
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LoadingContent
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
@@ -38,11 +41,19 @@ import java.time.Instant
 
 @Composable
 internal fun IncidentDetailScreen(
+    reloadRequested: Boolean,
+    onReloadRequestHandled: () -> Unit,
     onBack: () -> Unit,
     onDeleted: () -> Unit,
     onEdit: (String) -> Unit,
     viewModel: IncidentDetailViewModel = hiltViewModel(),
 ) {
+    LaunchedEffect(reloadRequested) {
+        if (reloadRequested) {
+            viewModel.onAction(IncidentDetailAction.Reload)
+            onReloadRequestHandled()
+        }
+    }
     when (val uiState = viewModel.uiState.collectAsStateWithLifecycle().value) {
         IncidentDetailUiState.Loading -> LoadingContent(Modifier.fillMaxSize())
         is IncidentDetailUiState.LoadFailed -> IncidentLoadFailureScreen(
@@ -56,6 +67,7 @@ internal fun IncidentDetailScreen(
             if (uiState.isDeleted) LaunchedEffect(Unit) { onDeleted() }
             IncidentDetailContent(
                 incident = uiState.incident,
+                isReloading = uiState.isReloading,
                 isDeleting = uiState.isDeleting,
                 onBack = onBack,
                 onEdit = { onEdit(uiState.incident.id) },
@@ -74,6 +86,7 @@ internal fun IncidentDetailScreen(
 @Composable
 internal fun IncidentDetailContent(
     incident: Incident,
+    isReloading: Boolean,
     isDeleting: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
@@ -87,10 +100,11 @@ internal fun IncidentDetailContent(
                 onBack = onBack,
                 backEnabled = !isDeleting,
             ) {
-                TextButton(onClick = { showDeleteConfirmation = true }, enabled = !isDeleting) {
+                val actionsEnabled = !isDeleting && !isReloading
+                TextButton(onClick = { showDeleteConfirmation = true }, enabled = actionsEnabled) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
-                TextButton(onClick = onEdit, enabled = !isDeleting) {
+                TextButton(onClick = onEdit, enabled = actionsEnabled) {
                     Text(stringResource(R.string.edit))
                 }
             }
@@ -104,6 +118,8 @@ internal fun IncidentDetailContent(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
+            if (isReloading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            IncidentStatusBadge(isResolved = incident.isResolved)
             Text(
                 text = incident.title,
                 style = MaterialTheme.typography.headlineSmall,
@@ -114,6 +130,9 @@ internal fun IncidentDetailContent(
             LabeledText(stringResource(R.string.created_at_label), formatIncidentTime(incident.createdAt))
             if (incident.isEdited) {
                 LabeledText(stringResource(R.string.updated_at_label), formatIncidentTime(incident.updatedAt))
+            }
+            incident.resolvedAt?.let {
+                LabeledText(stringResource(R.string.resolved_at_label), formatIncidentTime(it))
             }
             LabeledText(
                 stringResource(R.string.photos_label),
@@ -161,6 +180,7 @@ private fun IncidentDetailContentPreview() {
                 createdAt = Instant.parse("2026-10-20T09:00:00Z"),
                 updatedAt = Instant.parse("2026-10-21T11:30:00Z"),
             ),
+            isReloading = false,
             isDeleting = false,
             onBack = {},
             onEdit = {},

@@ -44,6 +44,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.ui.component.ErrorContent
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoThumbnail
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentStatusBadge
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LabeledText
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LoadingContent
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
@@ -208,6 +209,7 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            IncidentStatusBadge(isResolved = incident.isResolved)
             Text(
                 text = incident.title,
                 style = MaterialTheme.typography.titleLarge,
@@ -231,11 +233,12 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
             )
             TimestampText(R.string.created_at_label, incident.createdAt)
             if (incident.isEdited) TimestampText(R.string.updated_at_label, incident.updatedAt)
+            incident.resolvedAt?.let { TimestampText(R.string.resolved_at_label, it) }
             if (incident.photos.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     itemsIndexed(incident.photos) { index, photo ->
                         IncidentPhotoThumbnail(
-                            uri = photo.displayUri,
+                            uri = photo.thumbnailUri,
                             index = index,
                             modifier = Modifier.size(width = 120.dp, height = 144.dp),
                         )

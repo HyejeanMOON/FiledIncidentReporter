@@ -32,7 +32,7 @@ class IncidentDetailViewModel @Inject constructor(
         _uiState.value = state
         // The reducer only marks the work as started, and leaves the state alone when it should not start.
         if (state != previous) when (action) {
-            IncidentDetailAction.Retry -> load()
+            IncidentDetailAction.Retry, IncidentDetailAction.Reload -> load()
             IncidentDetailAction.Delete -> delete()
             IncidentDetailAction.ErrorDismissed -> Unit
         }

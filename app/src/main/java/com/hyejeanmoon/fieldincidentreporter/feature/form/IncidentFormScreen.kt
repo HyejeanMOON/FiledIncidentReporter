@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,11 +66,13 @@ import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 @Composable
 internal fun IncidentFormScreen(
     onBack: () -> Unit,
-    onSaved: () -> Unit,
+    onCreated: () -> Unit,
+    onUpdated: () -> Unit,
     viewModel: IncidentFormViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photoInput = rememberPhotoInput(
+        newPhotoUri = viewModel::newCapturedPhotoUri,
         onPhotosSelected = { viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(it)) },
         onCancelled = { viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled) },
     )
@@ -84,7 +87,7 @@ internal fun IncidentFormScreen(
         )
         is IncidentFormUiState.Ready -> {
             BackHandler(enabled = state.isSaving) { }
-            if (state.isSaved) LaunchedEffect(Unit) { onSaved() }
+            if (state.isSaved) LaunchedEffect(Unit) { if (state.isEditing) onUpdated() else onCreated() }
             IncidentFormContent(
                 uiState = state,
                 onBack = onBack,
@@ -194,6 +197,7 @@ private fun RequiredTextField(
     onEvent: (IncidentFormUiEvent) -> Unit,
 ) {
     val multiline = field == RequiredIncidentField.DESCRIPTION
+    val maxLength = checkNotNull(field.maxLength)
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -202,7 +206,23 @@ private fun RequiredTextField(
         singleLine = !multiline,
         minLines = if (multiline) 4 else 1,
         isError = isError,
-        supportingText = { if (isError) Text(stringResource(R.string.required_field_error)) },
+        supportingText = {
+            Row {
+                if (isError) {
+                    Text(
+                        text = if (value.isBlank()) {
+                            stringResource(R.string.required_field_error)
+                        } else {
+                            stringResource(R.string.field_too_long_error, maxLength)
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                Text(stringResource(R.string.character_count, value.length, maxLength))
+            }
+        },
         enabled = enabled,
     )
 }
@@ -260,7 +280,7 @@ private fun PhotoSection(
                 itemsIndexed(uiState.photos) { index, photo ->
                     Column {
                         IncidentPhotoThumbnail(
-                            uri = photo.displayUri,
+                            uri = photo.thumbnailUri,
                             index = index,
                             modifier = Modifier
                                 .size(96.dp)

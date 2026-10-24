@@ -11,13 +11,14 @@ internal data class IncidentDto(
     val photos: List<IncidentPhotoDto> = emptyList(),
     val createdAt: String,
     val updatedAt: String,
+    val resolvedAt: String? = null,
 )
 
 @Serializable
 internal data class IncidentPhotoDto(
     val id: String,
     val url: String,
-    val thumbnailUrl: String,
+    val thumbnailUrl: String = "",
 )
 
 /** [nextCursor] points just after the last of [items] and is null on the last page. */

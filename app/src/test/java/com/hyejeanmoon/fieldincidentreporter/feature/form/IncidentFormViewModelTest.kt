@@ -1,16 +1,22 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
+import com.hyejeanmoon.fieldincidentreporter.testing.FakeCapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.testing.MainDispatcherRule
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -27,13 +33,40 @@ class IncidentFormViewModelTest {
     )
 
     private val reducer = IncidentFormReducer(ValidateIncidentDraftUseCase())
+    private val capturedPhotos = FakeCapturedPhotoStore()
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) = IncidentFormViewModel(
         handle,
         repository,
         SaveIncidentUseCase(repository),
         reducer,
+        capturedPhotos,
     )
+
+    @Test
+    fun `closing the form deletes the photos the camera captured for it`() {
+        val store = ViewModelStore()
+        val viewModel = ViewModelProvider.create(store, viewModelFactory { initializer { viewModel() } })
+            .get(IncidentFormViewModel::class)
+        val captured = viewModel.newCapturedPhotoUri()
+        viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(listOf(captured)))
+        assertEquals(listOf(captured), capturedPhotos.photos)
+
+        store.clear()
+
+        assertEquals(emptyList<String>(), capturedPhotos.photos)
+    }
+
+    @Test
+    fun `restored edit keeps the thumbnails of stored photos`() {
+        val stored = IncidentPhoto.Stored("photo-A", "http://example.test/A", "http://example.test/A/thumbnail")
+        val form = SavedForm.from(IncidentFormUiState.Ready(incidentId = "incident-1", photos = listOf(stored)))
+        val handle = SavedStateHandle(
+            mapOf("incidentId" to "incident-1", IncidentFormViewModel.SAVED_FORM_KEY to Json.encodeToString(form)),
+        )
+
+        assertEquals(listOf(stored), viewModel(handle).form.photos)
+    }
 
     private val IncidentFormViewModel.form get() = uiState.value as IncidentFormUiState.Ready
 

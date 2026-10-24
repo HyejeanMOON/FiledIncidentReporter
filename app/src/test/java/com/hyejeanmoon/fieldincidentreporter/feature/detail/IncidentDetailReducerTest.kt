@@ -21,6 +21,35 @@ class IncidentDetailReducerTest {
     }
 
     @Test
+    fun `reload keeps the report on screen and replaces it when loaded`() {
+        val reloading = reducer.reduce(loaded.copy(error = IncidentFailure.SERVER_ERROR), IncidentDetailAction.Reload)
+        assertEquals(loaded.copy(isReloading = true), reloading)
+        assertEquals(reloading, reducer.reduce(reloading, IncidentDetailAction.Reload))
+        assertEquals(reloading, reducer.reduce(reloading, IncidentDetailAction.Delete))
+
+        val edited = testIncident(title = "Edited")
+        assertEquals(IncidentDetailUiState.Loaded(edited), reducer.reduce(reloading, IncidentDetailResult.Loaded(edited)))
+    }
+
+    @Test
+    fun `a failed reload keeps the report and shows the error`() {
+        val reloading = reducer.reduce(loaded, IncidentDetailAction.Reload)
+
+        assertEquals(
+            loaded.copy(error = IncidentFailure.NETWORK_UNAVAILABLE),
+            reducer.reduce(reloading, IncidentDetailResult.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE)),
+        )
+    }
+
+    @Test
+    fun `reload waits for a delete and needs a loaded report`() {
+        val deleting = reducer.reduce(loaded, IncidentDetailAction.Delete)
+
+        assertEquals(deleting, reducer.reduce(deleting, IncidentDetailAction.Reload))
+        assertEquals(IncidentDetailUiState.Loading, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailAction.Reload))
+    }
+
+    @Test
     fun `delete starts only once and only for a loaded report`() {
         assertEquals(IncidentDetailUiState.Loading, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailAction.Delete))
 

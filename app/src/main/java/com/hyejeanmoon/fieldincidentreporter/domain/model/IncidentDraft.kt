@@ -15,9 +15,10 @@ data class IncidentDraft(
     )
 }
 
-enum class RequiredIncidentField {
-    TITLE,
-    LOCATION,
-    DESCRIPTION,
+/** [maxLength] is the server's limit on a text field's trimmed length, in characters. */
+enum class RequiredIncidentField(val maxLength: Int? = null) {
+    TITLE(maxLength = 200),
+    LOCATION(maxLength = 200),
+    DESCRIPTION(maxLength = 4000),
     PHOTOS,
 }

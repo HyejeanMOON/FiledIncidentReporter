@@ -30,6 +30,18 @@ class ValidateIncidentDraftUseCaseTest {
     }
 
     @Test
+    fun `text is checked against the server's limits after trimming`() {
+        val atLimit = complete.copy(title = " ${"t".repeat(200)} ", location = "l".repeat(200), description = "d".repeat(4000))
+        assertEquals(emptyList<RequiredIncidentField>(), validate(atLimit))
+
+        val overLimit = atLimit.copy(title = "t".repeat(201), location = "l".repeat(201), description = "d".repeat(4001))
+        assertEquals(
+            listOf(RequiredIncidentField.TITLE, RequiredIncidentField.LOCATION, RequiredIncidentField.DESCRIPTION),
+            validate(overLimit),
+        )
+    }
+
+    @Test
     fun `a draft may have up to the maximum number of photos`() {
         assertEquals(emptyList<RequiredIncidentField>(), validate(complete.copy(photos = photos(MAX_INCIDENT_PHOTOS))))
         assertEquals(

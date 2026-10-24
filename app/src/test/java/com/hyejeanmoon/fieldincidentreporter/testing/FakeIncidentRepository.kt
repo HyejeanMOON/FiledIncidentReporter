@@ -13,7 +13,7 @@ val testTime: Instant = Instant.parse("2026-10-20T09:00:00Z")
 fun testIncident(id: String = "incident-1", title: String = "Title") =
     Incident(id, title, "Room", "Details", createdAt = testTime, updatedAt = testTime)
 
-class FakeIncidentRepository(private val incidents: MutableMap<String, Incident> = mutableMapOf()) : IncidentRepository {
+class FakeIncidentRepository(val incidents: MutableMap<String, Incident> = mutableMapOf()) : IncidentRepository {
     var failure: Throwable? = null
     val updates = mutableListOf<Triple<String, IncidentDraft, List<String>>>()
 

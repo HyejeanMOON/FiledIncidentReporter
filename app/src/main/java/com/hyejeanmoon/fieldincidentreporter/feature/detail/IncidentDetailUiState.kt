@@ -11,6 +11,8 @@ sealed interface IncidentDetailUiState {
 
     data class Loaded(
         val incident: Incident,
+        /** Fetching the report again after it was edited, while the old copy stays on screen. */
+        val isReloading: Boolean = false,
         val isDeleting: Boolean = false,
         /** Set once the report is gone; [isDeleting] stays set so nothing can be pressed while the screen closes. */
         val isDeleted: Boolean = false,
@@ -21,6 +23,7 @@ sealed interface IncidentDetailUiState {
 
 sealed interface IncidentDetailAction {
     data object Retry : IncidentDetailAction
+    data object Reload : IncidentDetailAction
     data object Delete : IncidentDetailAction
     data object ErrorDismissed : IncidentDetailAction
 }

@@ -13,9 +13,16 @@ internal fun IncidentDto.toIncident(baseUrl: HttpUrl) = Incident(
     description = description,
     photos = photos
         .filter { it.id.isNotBlank() }
-        .map { photo -> IncidentPhoto.Stored(photo.id, baseUrl.resolveOrSelf(photo.url)) },
+        .map { photo ->
+            IncidentPhoto.Stored(
+                id = photo.id,
+                displayUri = baseUrl.resolveOrSelf(photo.url),
+                thumbnailUri = baseUrl.resolveOrSelf(photo.thumbnailUrl.ifBlank { photo.url }),
+            )
+        },
     createdAt = Instant.parse(createdAt),
     updatedAt = Instant.parse(updatedAt),
+    resolvedAt = resolvedAt?.let(Instant::parse),
 )
 
 /** The server returns photo paths relative to its origin. */

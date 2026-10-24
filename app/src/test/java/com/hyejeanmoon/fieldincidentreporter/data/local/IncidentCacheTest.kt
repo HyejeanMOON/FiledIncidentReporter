@@ -57,11 +57,12 @@ class IncidentCacheTest {
     }
 
     @Test
-    fun `caching keeps photos and sub-millisecond times`() {
+    fun `caching keeps photos, thumbnails, resolution and sub-millisecond times`() {
         val incident = testIncident().copy(
-            photos = listOf(IncidentPhoto.Stored("photo-1", "http://example.test/photo-1")),
+            photos = listOf(IncidentPhoto.Stored("photo-1", "http://example.test/photo-1", "http://example.test/photo-1/thumbnail")),
             createdAt = Instant.parse("2026-10-20T09:00:00.123456Z"),
             updatedAt = Instant.parse("2026-10-20T09:00:00.123457Z"),
+            resolvedAt = Instant.parse("2026-10-21T10:00:00.000001Z"),
         )
 
         assertEquals(incident, incident.toEntity().toIncident())

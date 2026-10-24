@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.incidentDetailScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.detail.navigateToIncidentDetail
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.returnToIncidentDetailAfterEdit
 import com.hyejeanmoon.fieldincidentreporter.feature.form.incidentFormScreen
 import com.hyejeanmoon.fieldincidentreporter.feature.form.navigateToIncidentForm
 import com.hyejeanmoon.fieldincidentreporter.feature.list.IncidentListRoute
@@ -44,7 +45,9 @@ fun IncidentNavHost(navController: NavHostController = rememberNavController()) 
         )
         incidentFormScreen(
             onBack = navigateBack,
-            onSaved = navController::returnToIncidentListAfterMutation,
+            onCreated = navController::returnToIncidentListAfterMutation,
+            // A save already updated the cached list, so only the details need to reload.
+            onUpdated = navController::returnToIncidentDetailAfterEdit,
         )
     }
 }

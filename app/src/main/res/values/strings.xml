@@ -12,6 +12,9 @@
     <string name="description_label">Description</string>
     <string name="created_at_label">Created</string>
     <string name="updated_at_label">Updated</string>
+    <string name="resolved_at_label">Resolved</string>
+    <string name="status_open">Open</string>
+    <string name="status_resolved">Resolved</string>
     <string name="photos_label">Photos</string>
     <string name="photos_help">Add pictures that help identify the issue.</string>
     <string name="add_photos">Add photos</string>
@@ -21,6 +24,8 @@
     <string name="remove_photo">Remove</string>
     <string name="photos_selected">%1$d photos selected</string>
     <string name="required_field_error">This field is required.</string>
+    <string name="field_too_long_error">Use at most %1$d characters.</string>
+    <string name="character_count">%1$d / %2$d</string>
     <string name="required_photos_error">Select 1 to 20 photos.</string>
     <string name="photo_count">%1$d photos attached</string>
     <string name="incident_photo">Incident photo %1$d</string>

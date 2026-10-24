@@ -1,6 +1,5 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,19 +11,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.FileProvider
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_PHOTOS
-import java.io.File
-import java.util.UUID
 
 internal class PhotoInput(
     val choosePhotos: () -> Unit,
     val takePhoto: () -> Unit,
 )
 
-/** Wires the system photo picker and camera to [onPhotosSelected] and [onCancelled]. */
+/** Wires the system photo picker and camera to [onPhotosSelected] and [onCancelled]; [newPhotoUri] is where the camera writes. */
 @Composable
 internal fun rememberPhotoInput(
+    newPhotoUri: () -> String,
     onPhotosSelected: (List<String>) -> Unit,
     onCancelled: () -> Unit,
 ): PhotoInput {
@@ -60,15 +57,9 @@ internal fun rememberPhotoInput(
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         takePhoto = {
-            val photoUri = createIncidentPhotoUri(context)
+            val photoUri = Uri.parse(newPhotoUri())
             pendingPhotoUri = photoUri
             camera.launch(photoUri)
         },
     )
-}
-
-private fun createIncidentPhotoUri(context: Context): Uri {
-    val photoDirectory = File(context.filesDir, "incident_photos").apply { mkdirs() }
-    val photoFile = File(photoDirectory, "incident_${UUID.randomUUID()}.jpg")
-    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
 }

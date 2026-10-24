@@ -13,17 +13,41 @@ class IncidentMapperTest {
     private val baseUrl = "http://example.test/api/".toHttpUrl()
 
     @Test
-    fun `list and detail photos resolve the full image URL against the api origin`() {
+    fun `list and detail photos resolve the full image and thumbnail URLs against the api origin`() {
         val listItem = ApiJson.decodeFromString<IncidentPageDto>(
             """{"items":[$IncidentJson],"nextCursor":null}""",
         ).items.single().toIncident(baseUrl)
         val detail = ApiJson.decodeFromString<IncidentDto>(IncidentJson).toIncident(baseUrl)
 
-        val expectedPhoto = IncidentPhoto.Stored("photo-1", "http://example.test/incidents/1/photos/photo-1")
+        val expectedPhoto = IncidentPhoto.Stored(
+            "photo-1",
+            "http://example.test/incidents/1/photos/photo-1",
+            "http://example.test/incidents/1/photos/photo-1/thumbnail",
+        )
         assertEquals(listOf(expectedPhoto), listItem.photos)
         assertEquals(listItem, detail)
         assertEquals(Instant.parse("2026-10-20T09:00:00Z"), detail.createdAt)
         assertEquals(true, detail.isEdited)
+    }
+
+    @Test
+    fun `a report is resolved only when the server sends a resolution time`() {
+        val open = ApiJson.decodeFromString<IncidentDto>(IncidentJson).toIncident(baseUrl)
+        val resolved = ApiJson.decodeFromString<IncidentDto>(
+            IncidentJson.replace(""""updatedAt"""", """"resolved":true,"resolvedAt":"2026-10-22T08:00:00Z","updatedAt""""),
+        ).toIncident(baseUrl)
+
+        assertEquals(false, open.isResolved)
+        assertEquals(Instant.parse("2026-10-22T08:00:00Z"), resolved.resolvedAt)
+        assertEquals(true, resolved.isResolved)
+    }
+
+    @Test
+    fun `a photo without a thumbnail shows the full image`() {
+        val photo = ApiJson.decodeFromString<IncidentDto>(IncidentJson.replace(""","thumbnailUrl":"/incidents/1/photos/photo-1/thumbnail"""", ""))
+            .toIncident(baseUrl).photos.single()
+
+        assertEquals(photo.displayUri, photo.thumbnailUri)
     }
 
     @Test
