@@ -47,10 +47,16 @@ Create, view, edit, and delete incident reports, each with 1–20 photos from th
 - **Physical device:** connect it to the same Wi-Fi as your computer, then add this line to [`gradle.properties`](gradle.properties) with your computer's IP address and reinstall the app:
 
   ```properties
-  incidentApiBaseUrl=http://192.168.1.10:8080/
+  incidentApiBaseUrl=http://YOUR_COMPUTER_IP:8080/
   ```
 
-  On macOS, `ipconfig getifaddr en0` prints the IP address. Keep the trailing `/`, and change the port too if you set `SERVER_PORT`.
+  Or skip the file and pass the address when you build and install from the command line:
+
+  ```sh
+  ./gradlew installDebug -PincidentApiBaseUrl=http://YOUR_COMPUTER_IP:8080/
+  ```
+
+  Replace `YOUR_COMPUTER_IP` with your computer's IP address. `./start.sh` prints the full line with it filled in, or run `ipconfig getifaddr en0` on macOS. Keep the trailing `/`, and change the port too if you set `SERVER_PORT`.
 
 ### How it works
 
