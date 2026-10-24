@@ -19,5 +19,5 @@ local.properties
 *.class
 out/
 
-# Local mock API
-node_modules/
+# Logs written by start.sh
+logs/

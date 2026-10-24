@@ -5,7 +5,8 @@ A server project built with Spring Boot, Kotlin, and Maven.
 ## Requirements
 
 - JDK 17 or later
-- Maven 3.6.3 or later
+
+Maven is not needed; `./mvnw` downloads it on first use.
 
 ## Initialize and run
 
@@ -43,6 +44,6 @@ Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyw
 ## Test and package
 
 ```bash
-mvn test
-mvn package
+./mvnw test
+./mvnw package
 ```

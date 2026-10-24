@@ -2,13 +2,35 @@
 
 An Android-native app for reporting and managing facility maintenance incidents. It uses Jetpack Compose, Hilt-injected ViewModels, Retrofit, and a Spring Boot API.
 
-## Run the backend
+## 🚀 Quick start
 
-Start the separate `Filed Incident Reporter Server` Spring Boot project with:
+**Requirements:** JDK 17+, Node.js 20.9+, and Android Studio with an emulator (API 26+). Maven and Gradle are not needed; the repository includes their wrappers.
 
 ```sh
-mvn spring-boot:run
+./start.sh
 ```
+
+This one command builds and starts the local API and the admin dashboard. The first run downloads dependencies and takes a few minutes; later runs start in seconds.
+
+| Service | Address |
+| --- | --- |
+| Incident API (Spring Boot) | http://localhost:8080/incidents |
+| Admin dashboard (Next.js) | http://localhost:3000 |
+
+Then open this folder in Android Studio and run the `app` configuration on an emulator, or run `./gradlew installDebug` with an emulator open. Press Ctrl+C in the terminal to stop both services. Run `./start.sh --init` to rebuild after changing server code; set `SERVER_PORT` or `ADMIN_PORT` if a default port is taken. Logs are written to `logs/`.
+
+## Repository layout
+
+| Folder | Contents |
+| --- | --- |
+| `app/` | Android app (Kotlin, Jetpack Compose) |
+| `server/` | Local API server (Spring Boot, Kotlin, H2); see [server/README.md](server/README.md) |
+| `admin/` | Bonus operator dashboard for triaging, filtering, and resolving incidents (Next.js); see [admin/README.md](admin/README.md) |
+| `start.sh` | Sets up and starts `server/` and `admin/` together |
+
+The local API is a small Spring Boot server rather than json-server because the API contract needs things json-server cannot provide: multipart photo uploads and thumbnails, partial updates that delete individual photos, stable cursor pagination, and RFC 9457 error responses. It still runs entirely on your machine and stores data in a local H2 file.
+
+## API
 
 The server listens on port 8080 and stores incidents in a local H2 database. The API contract is:
 
@@ -24,11 +46,11 @@ Each report has string `id`, `title`, `location`, `description`, and `photos` fi
 
 ## Run the Android app
 
-Open this folder in Android Studio and run the `app` configuration on an Android emulator (API 26 or later). The default API address is `http://10.0.2.2:8080/`, which routes from the Android emulator to the development machine. Start the Spring Boot service before opening the app.
+Open this folder in Android Studio and run the `app` configuration on an Android emulator (API 26 or later). The default API address is `http://10.0.2.2:8080/`, which routes from the Android emulator to the development machine. Start the server with `./start.sh` before opening the app.
 
 For a physical device on the same network, set `incidentApiBaseUrl` to the development machine's reachable LAN address (including a trailing slash), for example in your local `gradle.properties` or with `-PincidentApiBaseUrl=http://192.168.1.10:8080/`. The server binds to all interfaces so that a device can reach it; use a trusted local network.
 
-The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0, JDK 17, and Android SDK Platform 37. This checkout lacks Gradle wrapper launch scripts and the wrapper JAR; use a locally installed Gradle 9.6.0 or generate the wrapper with `gradle wrapper --gradle-version 9.6.0`.
+The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0 (through `./gradlew`), JDK 17, and Android SDK Platform 37.
 
 The list reads reports from Room, so cached reports appear immediately and offline. A Paging 3 `RemoteMediator` keeps Room in sync with the server in pages of 20: it refreshes the first page on first entry, on Refresh or pull-to-refresh, when the app returns to the foreground while the list is shown, and after returning from a successful create, update, or delete, and it fetches later pages as the user nears the end of the list. Each fetched page is compared with the cached reports from just after the page before through its own last report, so unchanged reports are skipped, changed or new reports are written, and reports the server no longer returns are removed; the cache is never cleared as a whole. Confirmed saves and deletes also update Room right away. Opening a report's details or edit form fetches it from the server and replaces its cached copy, so changes made elsewhere, such as in the web admin, reach the list; a report the server no longer has is removed from Room. A report that is not cached is not added this way. If a refresh fails, the cached reports stay visible with the error. Photos selected in the picker or taken with the camera are uploaded as files.
 
@@ -46,7 +68,7 @@ com.hyejeanmoon.fieldincidentreporter
 │   ├── model/      Incident, IncidentPhoto, IncidentDraft
 │   ├── error/      IncidentFailure, IncidentException, runSuspendCatching
 │   ├── repository/ IncidentRepository contract
-│   └── usecase/    one class per business action (get, save, delete, validate)
+│   └── usecase/    business rules beyond plain repository calls (save, validate)
 ├── data/
 │   ├── local/      Room database, report entity, DAO, and the page comparison
 │   ├── remote/     Retrofit API, kotlinx.serialization DTOs, mappers, error mapping, photo upload
@@ -66,4 +88,4 @@ Each feature contains a `*Navigation.kt` file (a `@Serializable` route, a `NavCo
 
 Features do not call each other. After a successful create, update, or delete, the repository updates Room, which the list reads; navigation then returns to the list and requests one server refresh. The form saves the user's edits to `SavedStateHandle` as JSON so that they survive process death.
 
-Run the unit tests with `gradle :app:testDebugUnitTest`.
+Run the unit tests with `./gradlew :app:testDebugUnitTest`.
