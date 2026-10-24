@@ -43,7 +43,7 @@ class IncidentFormViewModel @Inject constructor(
             is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value) }
             is IncidentFormUiEvent.DescriptionChanged -> edit { copy(description = event.value) }
             is IncidentFormUiEvent.PhotosSelected -> edit {
-                copy(photos = (photos + event.uris.map(IncidentPhoto::Local)).distinct())
+                copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
             }
             is IncidentFormUiEvent.PhotoRemoved -> edit { copy(photos = photos - event.photo).photosVisited() }
             IncidentFormUiEvent.PhotosRemoved -> edit { copy(photos = emptyList()).photosVisited() }

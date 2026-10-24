@@ -12,7 +12,6 @@ data class IncidentDraft(
         title = title.trim(),
         location = location.trim(),
         description = description.trim(),
-        photos = photos.filterNot(IncidentPhoto::isBlank),
     )
 }
 

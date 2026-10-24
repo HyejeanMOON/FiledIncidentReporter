@@ -11,7 +11,9 @@ internal fun IncidentDto.toIncident(baseUrl: HttpUrl) = Incident(
     title = title,
     location = location,
     description = description,
-    photos = photos.map { photo -> IncidentPhoto.Stored(photo.id, baseUrl.resolveOrSelf(photo.url)) },
+    photos = photos
+        .filter { it.id.isNotBlank() }
+        .map { photo -> IncidentPhoto.Stored(photo.id, baseUrl.resolveOrSelf(photo.url)) },
     createdAt = Instant.parse(createdAt),
     updatedAt = Instant.parse(updatedAt),
 )
