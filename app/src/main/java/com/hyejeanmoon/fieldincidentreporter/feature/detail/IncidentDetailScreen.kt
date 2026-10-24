@@ -128,7 +128,7 @@ internal fun IncidentDetailContent(
             LabeledText(stringResource(R.string.location_label), incident.location)
             LabeledText(stringResource(R.string.description_label), incident.description)
             LabeledText(stringResource(R.string.created_at_label), formatIncidentTime(incident.createdAt))
-            if (incident.isEdited) {
+            if (incident.hasSeparateUpdateTime) {
                 LabeledText(stringResource(R.string.updated_at_label), formatIncidentTime(incident.updatedAt))
             }
             incident.resolvedAt?.let {

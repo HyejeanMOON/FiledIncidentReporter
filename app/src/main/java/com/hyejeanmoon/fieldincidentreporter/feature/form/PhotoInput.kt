@@ -1,5 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_PHOTOS
 
 internal class PhotoInput(
@@ -41,14 +43,20 @@ internal fun rememberPhotoInput(
         }
         onPhotosSelected(uris.map(Uri::toString))
     }
+    /** Deletes the empty file made for a photo that was not taken. */
+    fun discardPhoto(photoUri: Uri) {
+        pendingPhotoUri = null
+        context.contentResolver.delete(photoUri, null, null)
+        onCancelled()
+    }
+
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { captured ->
         val photoUri = pendingPhotoUri ?: return@rememberLauncherForActivityResult
-        pendingPhotoUri = null
         if (captured) {
+            pendingPhotoUri = null
             onPhotosSelected(listOf(photoUri.toString()))
         } else {
-            context.contentResolver.delete(photoUri, null, null)
-            onCancelled()
+            discardPhoto(photoUri)
         }
     }
 
@@ -57,9 +65,14 @@ internal fun rememberPhotoInput(
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         takePhoto = {
-            val photoUri = Uri.parse(newPhotoUri())
+            val photoUri = newPhotoUri().toUri()
             pendingPhotoUri = photoUri
-            camera.launch(photoUri)
+            try {
+                camera.launch(photoUri)
+            } catch (_: ActivityNotFoundException) {
+                // No camera app, as on some tablets or where a device policy disables the camera.
+                discardPhoto(photoUri)
+            }
         },
     )
 }

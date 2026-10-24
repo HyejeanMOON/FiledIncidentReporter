@@ -179,7 +179,8 @@ internal fun IncidentFormContent(
                 enabled = uiState.isSubmitEnabled,
             ) {
                 if (uiState.isSaving) {
-                    CircularProgressIndicator()
+                    // Icon-sized, so the button keeps its height while saving.
+                    CircularProgressIndicator(modifier = Modifier.size(ButtonDefaults.IconSize), strokeWidth = 2.dp)
                 } else {
                     Text(stringResource(if (uiState.isEditing) R.string.save_changes else R.string.submit_incident))
                 }

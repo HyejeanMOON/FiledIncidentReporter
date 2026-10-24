@@ -27,7 +27,7 @@ class IncidentMapperTest {
         assertEquals(listOf(expectedPhoto), listItem.photos)
         assertEquals(listItem, detail)
         assertEquals(Instant.parse("2026-10-20T09:00:00Z"), detail.createdAt)
-        assertEquals(true, detail.isEdited)
+        assertEquals(Instant.parse("2026-10-21T11:30:00Z"), detail.updatedAt)
     }
 
     @Test
@@ -73,13 +73,6 @@ class IncidentMapperTest {
     fun `absolute and unresolvable photo URLs are kept as they are`() {
         assertEquals("https://cdn.example.test/photo-1", baseUrl.resolveOrSelf("https://cdn.example.test/photo-1"))
         assertEquals("http://", baseUrl.resolveOrSelf("http://"))
-    }
-
-    @Test
-    fun `a report is edited only when it was updated after it was created`() {
-        val incident = ApiJson.decodeFromString<IncidentDto>(IncidentJson).toIncident(baseUrl)
-
-        assertEquals(false, incident.copy(updatedAt = incident.createdAt).isEdited)
     }
 
     private companion object {

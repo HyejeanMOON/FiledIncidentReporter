@@ -13,7 +13,11 @@ data class Incident(
     /** Set when an operator resolves the report in the admin dashboard. */
     val resolvedAt: Instant? = null,
 ) {
-    val isEdited: Boolean get() = updatedAt != createdAt
+    /**
+     * Whether [updatedAt] records a change of its own. The server also sets it when the report is
+     * created and when it is resolved, and [createdAt] and [resolvedAt] already show those times.
+     */
+    val hasSeparateUpdateTime: Boolean get() = updatedAt != createdAt && updatedAt != resolvedAt
 
     val isResolved: Boolean get() = resolvedAt != null
 }
