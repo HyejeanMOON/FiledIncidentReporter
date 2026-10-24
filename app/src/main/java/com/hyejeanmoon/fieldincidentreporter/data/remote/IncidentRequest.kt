@@ -12,10 +12,12 @@ import java.io.IOException
 internal suspend fun <T> incidentRequest(block: suspend () -> T): T = try {
     block()
 } catch (error: IOException) {
-    throw IncidentException(
-        if (error is PhotoReadException) IncidentFailure.PHOTO else IncidentFailure.NETWORK,
-        error,
-    )
+    val failure = when (error) {
+        is UnsupportedPhotoFormatException -> IncidentFailure.PHOTO_FORMAT_UNSUPPORTED
+        is PhotoReadException -> IncidentFailure.PHOTO_UNREADABLE
+        else -> IncidentFailure.NETWORK_UNAVAILABLE
+    }
+    throw IncidentException(failure, error)
 } catch (error: HttpException) {
     throw IncidentException(error.toIncidentFailure(), error)
 }
@@ -31,15 +33,15 @@ internal fun HttpException.toIncidentFailure(): IncidentFailure {
 }
 
 internal fun failureForApiError(code: String?, status: Int): IncidentFailure = when (code) {
-    "INCIDENT_NOT_FOUND", "RESOURCE_NOT_FOUND" -> IncidentFailure.NOT_FOUND
-    "INVALID_INCIDENT" -> IncidentFailure.INVALID_INCIDENT
-    "INVALID_REQUEST" -> IncidentFailure.INVALID_REQUEST
-    "PAYLOAD_TOO_LARGE" -> IncidentFailure.PAYLOAD_TOO_LARGE
-    "INTERNAL_ERROR" -> IncidentFailure.SERVER
+    "INCIDENT_NOT_FOUND", "RESOURCE_NOT_FOUND" -> IncidentFailure.INCIDENT_NOT_FOUND
+    "INVALID_INCIDENT" -> IncidentFailure.INCIDENT_VALIDATION_FAILED
+    "INVALID_REQUEST" -> IncidentFailure.MALFORMED_REQUEST
+    "PAYLOAD_TOO_LARGE" -> IncidentFailure.UPLOAD_TOO_LARGE
+    "INTERNAL_ERROR" -> IncidentFailure.SERVER_ERROR
     else -> when (status) {
-        400, 405, 415, 422 -> IncidentFailure.INVALID_REQUEST
-        404 -> IncidentFailure.NOT_FOUND
-        413 -> IncidentFailure.PAYLOAD_TOO_LARGE
-        else -> IncidentFailure.SERVER
+        400, 405, 415, 422 -> IncidentFailure.MALFORMED_REQUEST
+        404 -> IncidentFailure.INCIDENT_NOT_FOUND
+        413 -> IncidentFailure.UPLOAD_TOO_LARGE
+        else -> IncidentFailure.SERVER_ERROR
     }
 }

@@ -6,12 +6,13 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 
 @StringRes
 fun IncidentFailure.messageResId(): Int = when (this) {
-    IncidentFailure.NETWORK -> R.string.error_network
-    IncidentFailure.PHOTO -> R.string.error_photo
-    IncidentFailure.INVALID_INCIDENT -> R.string.error_invalid_incident
-    IncidentFailure.INVALID_REQUEST -> R.string.error_invalid_request
-    IncidentFailure.PAYLOAD_TOO_LARGE -> R.string.error_payload_too_large
-    IncidentFailure.SERVER -> R.string.error_server
-    IncidentFailure.NOT_FOUND -> R.string.error_not_found
-    IncidentFailure.UNKNOWN -> R.string.error_unknown
+    IncidentFailure.NETWORK_UNAVAILABLE -> R.string.error_network_unavailable
+    IncidentFailure.PHOTO_FORMAT_UNSUPPORTED -> R.string.error_photo_format_unsupported
+    IncidentFailure.PHOTO_UNREADABLE -> R.string.error_photo_unreadable
+    IncidentFailure.INCIDENT_VALIDATION_FAILED -> R.string.error_incident_validation_failed
+    IncidentFailure.MALFORMED_REQUEST -> R.string.error_malformed_request
+    IncidentFailure.UPLOAD_TOO_LARGE -> R.string.error_upload_too_large
+    IncidentFailure.SERVER_ERROR -> R.string.error_server_error
+    IncidentFailure.INCIDENT_NOT_FOUND -> R.string.error_incident_not_found
+    IncidentFailure.UNEXPECTED -> R.string.error_unexpected
 }

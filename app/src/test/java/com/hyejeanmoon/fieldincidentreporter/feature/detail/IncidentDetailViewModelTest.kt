@@ -27,9 +27,9 @@ class IncidentDetailViewModelTest {
 
     @Test
     fun `failed load can be retried`() {
-        repository.failure = IncidentException(IncidentFailure.NETWORK, IOException())
+        repository.failure = IncidentException(IncidentFailure.NETWORK_UNAVAILABLE, IOException())
         val viewModel = viewModel()
-        assertEquals(IncidentFailure.NETWORK, viewModel.uiState.value.loadFailure)
+        assertEquals(IncidentFailure.NETWORK_UNAVAILABLE, viewModel.uiState.value.loadFailure)
 
         repository.failure = null
         viewModel.onAction(IncidentDetailAction.Retry)

@@ -53,7 +53,7 @@ internal class OfflineFirstIncidentRepository @Inject constructor(
         val incident = try {
             incidentRequest { api.getIncident(id).toIncident(baseUrl) }
         } catch (error: IncidentException) {
-            if (error.failure == IncidentFailure.NOT_FOUND) updateCache("lookup") { dao.delete(listOf(id)) }
+            if (error.failure == IncidentFailure.INCIDENT_NOT_FOUND) updateCache("lookup") { dao.delete(listOf(id)) }
             throw error
         }
         updateCache("lookup") { dao.refreshCached(incident.toEntity()) }

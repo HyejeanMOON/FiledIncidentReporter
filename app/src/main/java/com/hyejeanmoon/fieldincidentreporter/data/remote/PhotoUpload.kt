@@ -19,6 +19,8 @@ private const val MIME_HEIC = "image/heic"
 private const val MIME_HEIF = "image/heif"
 private const val MIME_GIF = "image/gif"
 
+internal class UnsupportedPhotoFormatException(message: String) : IOException(message)
+
 internal class PhotoReadException(message: String, cause: IOException? = null) : IOException(message, cause)
 
 internal fun photoPart(context: Context, value: String, index: Int): MultipartBody.Part {
@@ -27,10 +29,10 @@ internal fun photoPart(context: Context, value: String, index: Int): MultipartBo
     val contentType = when (reportedType) {
         MIME_JPG -> MIME_JPEG
         MIME_JPEG, MIME_PNG, MIME_WEBP, MIME_HEIC, MIME_HEIF, MIME_GIF -> reportedType
-        else -> throw PhotoReadException("Unsupported photo format")
+        else -> throw UnsupportedPhotoFormatException("Unsupported photo format")
     }
     val mediaType = contentType.toMediaTypeOrNull()
-        ?: throw PhotoReadException("Invalid photo content type")
+        ?: throw UnsupportedPhotoFormatException("Invalid photo content type")
     val body = object : RequestBody() {
         override fun contentType(): MediaType = mediaType
 

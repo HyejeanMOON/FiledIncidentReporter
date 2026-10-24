@@ -111,7 +111,7 @@ class IncidentRemoteMediatorTest {
 
         val result = IncidentRemoteMediator(api, dao, baseUrl).load(LoadType.REFRESH, state)
 
-        assertEquals(IncidentFailure.NETWORK, (result as MediatorResult.Error).throwable.toIncidentFailure())
+        assertEquals(IncidentFailure.NETWORK_UNAVAILABLE, (result as MediatorResult.Error).throwable.toIncidentFailure())
         assertEquals(cached, dao.list)
     }
 

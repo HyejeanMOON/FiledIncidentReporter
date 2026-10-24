@@ -41,14 +41,15 @@
     <string name="loading_incidents">Loading reports…</string>
     <string name="cached_incidents_notice">Showing saved reports. They may be out of date.</string>
     <string name="error_title">Could not complete the request</string>
-    <string name="error_network">No network connection or the server is unreachable. Check your connection and try again.</string>
-    <string name="error_photo">Could not read a selected photo. Select it again and retry.</string>
-    <string name="error_invalid_incident">The report does not meet the server requirements. Check its fields and photos, then try again.</string>
-    <string name="error_invalid_request">The server could not understand this request. Check that the app and server versions match.</string>
-    <string name="error_payload_too_large">A photo is too large to upload. Choose photos under 10 MB and try again.</string>
-    <string name="error_server">The server could not complete the request. Please try again.</string>
-    <string name="error_not_found">This report no longer exists on the server. Refresh the list.</string>
-    <string name="error_unknown">Something went wrong. Please try again.</string>
+    <string name="error_network_unavailable">No network connection or the server is unreachable. Check your connection and try again.</string>
+    <string name="error_photo_format_unsupported">A selected photo is in an unsupported format. Use JPEG, PNG, WebP, HEIC, HEIF or GIF.</string>
+    <string name="error_photo_unreadable">Could not read a selected photo. Select it again and retry.</string>
+    <string name="error_incident_validation_failed">The report does not meet the server requirements. Check its fields and photos, then try again.</string>
+    <string name="error_malformed_request">The server could not understand this request. Check that the app and server versions match.</string>
+    <string name="error_upload_too_large">A photo is too large to upload. Choose photos under 10 MB and try again.</string>
+    <string name="error_server_error">The server could not complete the request. Please try again.</string>
+    <string name="error_incident_not_found">This report no longer exists on the server. Refresh the list.</string>
+    <string name="error_unexpected">Something went wrong. Please try again.</string>
     <string name="ok">OK</string>
     <string name="delete">Delete</string>
 </resources>

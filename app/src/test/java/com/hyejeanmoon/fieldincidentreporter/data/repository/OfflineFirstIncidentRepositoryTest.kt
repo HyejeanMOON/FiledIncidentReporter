@@ -46,7 +46,7 @@ class OfflineFirstIncidentRepositoryTest {
 
         val result = runSuspendCatching { repository(FakeIncidentApi(emptyList()), dao).getIncident(cached.id) }
 
-        assertEquals(IncidentFailure.NOT_FOUND, result.exceptionOrNull()?.toIncidentFailure())
+        assertEquals(IncidentFailure.INCIDENT_NOT_FOUND, result.exceptionOrNull()?.toIncidentFailure())
         assertEquals(listOf(cached.id), dao.deleted)
         assertEquals(emptyList<String>(), dao.list.map { it.id })
     }
@@ -58,7 +58,7 @@ class OfflineFirstIncidentRepositoryTest {
 
         val result = runSuspendCatching { repository(api, dao).getIncident(cached.id) }
 
-        assertEquals(IncidentFailure.NETWORK, result.exceptionOrNull()?.toIncidentFailure())
+        assertEquals(IncidentFailure.NETWORK_UNAVAILABLE, result.exceptionOrNull()?.toIncidentFailure())
         assertEquals(listOf(cached.cached()), dao.list)
     }
 

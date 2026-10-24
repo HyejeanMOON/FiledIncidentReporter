@@ -71,7 +71,7 @@ fun IncidentLoadFailureScreen(
     Scaffold(topBar = { BackTopAppBar(title = title, onBack = onBack) }) { contentPadding ->
         ErrorContent(
             failure = failure,
-            onRetry = onRetry.takeIf { failure != IncidentFailure.NOT_FOUND },
+            onRetry = onRetry.takeIf { failure != IncidentFailure.INCIDENT_NOT_FOUND },
             modifier = Modifier.fillMaxSize().padding(contentPadding),
         ) {
             TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_list)) }
