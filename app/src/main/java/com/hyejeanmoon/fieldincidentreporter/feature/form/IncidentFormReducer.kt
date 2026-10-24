@@ -22,48 +22,58 @@ sealed interface IncidentFormResult {
 class IncidentFormReducer @Inject constructor(
     private val validateIncidentDraft: ValidateIncidentDraftUseCase,
 ) {
-    fun reduce(state: IncidentFormUiState, event: IncidentFormUiEvent): IncidentFormUiState = when (event) {
-        is IncidentFormUiEvent.TitleChanged -> state.edit { copy(title = event.value) }
-        is IncidentFormUiEvent.LocationChanged -> state.edit { copy(location = event.value) }
-        is IncidentFormUiEvent.DescriptionChanged -> state.edit { copy(description = event.value) }
-        is IncidentFormUiEvent.PhotosSelected -> state.edit {
-            copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
-        }
-        is IncidentFormUiEvent.PhotoRemoved -> state.edit { copy(photos = photos - event.photo).photosVisited() }
-        IncidentFormUiEvent.PhotosRemoved -> state.edit { copy(photos = emptyList()).photosVisited() }
-        IncidentFormUiEvent.PhotoInputCancelled -> state.edit { if (photos.isEmpty()) photosVisited() else this }
-        is IncidentFormUiEvent.FieldFocusChanged -> when {
-            event.isFocused -> state.copy(focusedFields = state.focusedFields + event.field)
-            // Leaving a field reveals its validation error.
-            event.field in state.focusedFields -> state.copy(
-                focusedFields = state.focusedFields - event.field,
-                validatedFields = state.validatedFields + event.field,
-            )
-            else -> state
-        }
-        IncidentFormUiEvent.Submit -> if (state.isSubmitEnabled) state.copy(isSaving = true, error = null) else state
-        IncidentFormUiEvent.Retry -> if (state.loadFailure != null) state.copy(isLoading = true, loadFailure = null) else state
-        IncidentFormUiEvent.ErrorDismissed -> state.copy(error = null)
-    }.let(::validated)
+    fun reduce(state: IncidentFormUiState, event: IncidentFormUiEvent): IncidentFormUiState = when (state) {
+        IncidentFormUiState.Loading -> state
+        is IncidentFormUiState.LoadFailed -> if (event == IncidentFormUiEvent.Retry) IncidentFormUiState.Loading else state
+        is IncidentFormUiState.Ready -> validated(state.reduce(event))
+    }
 
     fun reduce(state: IncidentFormUiState, result: IncidentFormResult): IncidentFormUiState = when (result) {
-        is IncidentFormResult.Loaded -> state.filledWith(result.incident)
-        is IncidentFormResult.LoadFailed -> state.copy(isLoading = false, loadFailure = result.failure)
-        IncidentFormResult.Saved -> state.copy(isSaving = false, isSaved = true)
-        is IncidentFormResult.SaveFailed -> state.copy(isSaving = false, error = result.failure)
-    }.let(::validated)
+        is IncidentFormResult.Loaded -> validated(formOf(result.incident))
+        is IncidentFormResult.LoadFailed -> IncidentFormUiState.LoadFailed(result.failure)
+        IncidentFormResult.Saved -> state.ifReady { copy(isSaving = false, isSaved = true) }
+        is IncidentFormResult.SaveFailed -> state.ifReady { copy(isSaving = false, error = result.failure) }
+    }
 
-    fun validated(state: IncidentFormUiState) = state.copy(missingFields = validateIncidentDraft(state.toDraft()))
+    fun validated(state: IncidentFormUiState.Ready) = state.copy(missingFields = validateIncidentDraft(state.toDraft()))
 }
 
-private inline fun IncidentFormUiState.edit(transform: IncidentFormUiState.() -> IncidentFormUiState) =
+private fun IncidentFormUiState.Ready.reduce(event: IncidentFormUiEvent): IncidentFormUiState.Ready = when (event) {
+    is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value) }
+    is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value) }
+    is IncidentFormUiEvent.DescriptionChanged -> edit { copy(description = event.value) }
+    is IncidentFormUiEvent.PhotosSelected -> edit {
+        copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
+    }
+    is IncidentFormUiEvent.PhotoRemoved -> edit { copy(photos = photos - event.photo).photosVisited() }
+    IncidentFormUiEvent.PhotosRemoved -> edit { copy(photos = emptyList()).photosVisited() }
+    IncidentFormUiEvent.PhotoInputCancelled -> edit { if (photos.isEmpty()) photosVisited() else this }
+    is IncidentFormUiEvent.FieldFocusChanged -> when {
+        event.isFocused -> copy(focusedFields = focusedFields + event.field)
+        // Leaving a field reveals its validation error.
+        event.field in focusedFields -> copy(
+            focusedFields = focusedFields - event.field,
+            validatedFields = validatedFields + event.field,
+        )
+        else -> this
+    }
+    IncidentFormUiEvent.Submit -> if (isSubmitEnabled) copy(isSaving = true, error = null) else this
+    IncidentFormUiEvent.Retry -> this
+    IncidentFormUiEvent.ErrorDismissed -> copy(error = null)
+}
+
+private inline fun IncidentFormUiState.Ready.edit(transform: IncidentFormUiState.Ready.() -> IncidentFormUiState.Ready) =
     if (canEdit) transform() else this
 
-private fun IncidentFormUiState.photosVisited() =
+private inline fun IncidentFormUiState.ifReady(
+    transform: IncidentFormUiState.Ready.() -> IncidentFormUiState,
+) = if (this is IncidentFormUiState.Ready) transform() else this
+
+private fun IncidentFormUiState.Ready.photosVisited() =
     copy(validatedFields = validatedFields + RequiredIncidentField.PHOTOS)
 
-private fun IncidentFormUiState.filledWith(incident: Incident) = copy(
-    isLoading = false,
+private fun formOf(incident: Incident) = IncidentFormUiState.Ready(
+    incidentId = incident.id,
     title = incident.title,
     location = incident.location,
     description = incident.description,

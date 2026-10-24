@@ -53,39 +53,39 @@ internal fun IncidentFormScreen(
     viewModel: IncidentFormViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    BackHandler(enabled = uiState.isSaving) { }
-    if (uiState.isSaved) LaunchedEffect(Unit) { onSaved() }
     val photoInput = rememberPhotoInput(
         onPhotosSelected = { viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(it)) },
         onCancelled = { viewModel.onEvent(IncidentFormUiEvent.PhotoInputCancelled) },
     )
 
-    val loadFailure = uiState.loadFailure
-    when {
-        uiState.isLoading -> LoadingContent(Modifier.fillMaxSize())
-        loadFailure != null -> IncidentLoadFailureScreen(
+    when (val state = uiState) {
+        IncidentFormUiState.Loading -> LoadingContent(Modifier.fillMaxSize())
+        is IncidentFormUiState.LoadFailed -> IncidentLoadFailureScreen(
             title = stringResource(R.string.edit_incident_title),
-            failure = loadFailure,
+            failure = state.failure,
             onBack = onBack,
             onRetry = { viewModel.onEvent(IncidentFormUiEvent.Retry) },
         )
-        else -> IncidentFormContent(
-            uiState = uiState,
-            onBack = onBack,
-            onChoosePhotos = photoInput.choosePhotos,
-            onTakePhoto = photoInput.takePhoto,
-            onEvent = viewModel::onEvent,
-        )
-    }
-
-    uiState.error?.let { error ->
-        IncidentErrorDialog(failure = error, onDismiss = { viewModel.onEvent(IncidentFormUiEvent.ErrorDismissed) })
+        is IncidentFormUiState.Ready -> {
+            BackHandler(enabled = state.isSaving) { }
+            if (state.isSaved) LaunchedEffect(Unit) { onSaved() }
+            IncidentFormContent(
+                uiState = state,
+                onBack = onBack,
+                onChoosePhotos = photoInput.choosePhotos,
+                onTakePhoto = photoInput.takePhoto,
+                onEvent = viewModel::onEvent,
+            )
+            state.error?.let { error ->
+                IncidentErrorDialog(failure = error, onDismiss = { viewModel.onEvent(IncidentFormUiEvent.ErrorDismissed) })
+            }
+        }
     }
 }
 
 @Composable
 internal fun IncidentFormContent(
-    uiState: IncidentFormUiState,
+    uiState: IncidentFormUiState.Ready,
     onBack: () -> Unit,
     onChoosePhotos: () -> Unit,
     onTakePhoto: () -> Unit,
@@ -193,7 +193,7 @@ private fun RequiredTextField(
 
 @Composable
 private fun PhotoSection(
-    uiState: IncidentFormUiState,
+    uiState: IncidentFormUiState.Ready,
     isError: Boolean,
     onChoosePhotos: () -> Unit,
     onTakePhoto: () -> Unit,
@@ -288,7 +288,7 @@ private fun Modifier.reportFocus(field: RequiredIncidentField, onEvent: (Inciden
 private fun NewIncidentFormPreview() {
     FieldIncidentReporterTheme {
         IncidentFormContent(
-            uiState = IncidentFormUiState(),
+            uiState = IncidentFormUiState.Ready(),
             onBack = {},
             onChoosePhotos = {},
             onTakePhoto = {},
@@ -302,7 +302,7 @@ private fun NewIncidentFormPreview() {
 private fun EditIncidentFormPreview() {
     FieldIncidentReporterTheme {
         IncidentFormContent(
-            uiState = IncidentFormUiState(
+            uiState = IncidentFormUiState.Ready(
                 incidentId = "preview-hydraulic-press",
                 title = "Hydraulic press is not responding",
                 location = "Workshop · Bay 3",

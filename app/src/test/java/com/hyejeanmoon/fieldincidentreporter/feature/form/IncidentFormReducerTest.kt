@@ -10,10 +10,10 @@ import org.junit.Test
 
 class IncidentFormReducerTest {
     private val reducer = IncidentFormReducer(ValidateIncidentDraftUseCase())
-    private val empty = reducer.validated(IncidentFormUiState())
+    private val empty = reducer.validated(IncidentFormUiState.Ready())
 
     private fun IncidentFormUiState.after(vararg events: IncidentFormUiEvent) =
-        events.fold(this, reducer::reduce)
+        events.fold(this, reducer::reduce) as IncidentFormUiState.Ready
 
     @Test
     fun `leaving a field reveals its error but focusing it does not`() {
@@ -46,36 +46,36 @@ class IncidentFormReducerTest {
 
     @Test
     fun `edits are ignored while saving`() {
-        val saving = empty.copy(isSaving = true)
-        assertEquals("", reducer.reduce(saving, IncidentFormUiEvent.TitleChanged("Title")).title)
+        assertEquals("", empty.copy(isSaving = true).after(IncidentFormUiEvent.TitleChanged("Title")).title)
     }
 
     @Test
     fun `a loaded incident fills a valid form`() {
         val photo = IncidentPhoto.Stored("photo-A", "http://example.test/A")
-        val loading = reducer.validated(IncidentFormUiState(incidentId = "incident-1", isLoading = true))
+        val incident = testIncident().copy(photos = listOf(photo))
 
-        val state = reducer.reduce(loading, IncidentFormResult.Loaded(testIncident().copy(photos = listOf(photo))))
-        assertEquals(false, state.isLoading)
+        val state = reducer.reduce(IncidentFormUiState.Loading, IncidentFormResult.Loaded(incident))
+            as IncidentFormUiState.Ready
+        assertEquals("incident-1", state.incidentId)
         assertEquals(listOf("photo-A"), state.originalPhotoIds)
         assertEquals(true, state.isSubmitEnabled)
     }
 
     @Test
     fun `retry restarts loading only after a load failure`() {
-        val loading = IncidentFormUiState(incidentId = "incident-1", isLoading = true)
-        val failed = reducer.reduce(loading, IncidentFormResult.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE))
+        val failed = reducer.reduce(
+            IncidentFormUiState.Loading,
+            IncidentFormResult.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE),
+        )
 
-        val retried = failed.after(IncidentFormUiEvent.Retry)
-        assertEquals(true, retried.isLoading)
-        assertEquals(null, retried.loadFailure)
-        assertEquals(false, empty.after(IncidentFormUiEvent.Retry).isLoading)
+        assertEquals(IncidentFormUiState.Loading, reducer.reduce(failed, IncidentFormUiEvent.Retry))
+        assertEquals(empty, empty.after(IncidentFormUiEvent.Retry))
     }
 
     @Test
     fun `a failed save keeps the form editable`() {
-        val saving = empty.copy(isSaving = true)
-        val state = reducer.reduce(saving, IncidentFormResult.SaveFailed(IncidentFailure.SERVER_ERROR))
+        val state = reducer.reduce(empty.copy(isSaving = true), IncidentFormResult.SaveFailed(IncidentFailure.SERVER_ERROR))
+            as IncidentFormUiState.Ready
         assertEquals(IncidentFailure.SERVER_ERROR, state.error)
         assertEquals(true, state.canEdit)
     }

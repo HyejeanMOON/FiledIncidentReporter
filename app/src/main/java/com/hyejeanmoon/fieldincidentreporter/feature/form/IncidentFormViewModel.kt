@@ -26,21 +26,25 @@ class IncidentFormViewModel @Inject constructor(
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentFormRoute().incidentId
     private val _uiState = MutableStateFlow(
-        reducer.validated(restoreForm() ?: IncidentFormUiState(incidentId = incidentId, isLoading = incidentId != null)),
+        restoreForm()?.let(reducer::validated)
+            ?: if (incidentId != null) IncidentFormUiState.Loading else reducer.validated(IncidentFormUiState.Ready()),
     )
     val uiState = _uiState.asStateFlow()
 
     init {
-        if (_uiState.value.isLoading) load()
+        if (_uiState.value == IncidentFormUiState.Loading) load()
     }
 
     fun onEvent(event: IncidentFormUiEvent) {
         val previous = _uiState.value
         val state = reducer.reduce(previous, event)
         setState(state)
-        // The reducer only marks the work as started; it runs here.
-        if (state.isLoading && !previous.isLoading) load()
-        if (state.isSaving && !previous.isSaving) save(state)
+        // The reducer only marks the work as started, and leaves the state alone when it should not start.
+        if (state != previous) when (event) {
+            IncidentFormUiEvent.Retry -> load()
+            IncidentFormUiEvent.Submit -> save(state as IncidentFormUiState.Ready)
+            else -> Unit
+        }
     }
 
     private fun load() {
@@ -52,7 +56,7 @@ class IncidentFormViewModel @Inject constructor(
         }
     }
 
-    private fun save(state: IncidentFormUiState) {
+    private fun save(state: IncidentFormUiState.Ready) {
         viewModelScope.launch {
             runSuspendCatching { saveIncident(state.incidentId, state.toDraft(), state.deletedPhotoIds) }
                 .onSuccess { onResult(IncidentFormResult.Saved) }
@@ -64,12 +68,13 @@ class IncidentFormViewModel @Inject constructor(
 
     /** Publishes [state], and saves the user's edits so that they survive process death. */
     private fun setState(state: IncidentFormUiState) {
-        val form = SavedForm.from(state)
-        if (form != SavedForm.from(_uiState.value)) savedStateHandle[SAVED_FORM_KEY] = Json.encodeToString(form)
+        val form = (state as? IncidentFormUiState.Ready)?.let(SavedForm::from)
+        val previousForm = (_uiState.value as? IncidentFormUiState.Ready)?.let(SavedForm::from)
+        if (form != null && form != previousForm) savedStateHandle[SAVED_FORM_KEY] = Json.encodeToString(form)
         _uiState.value = state
     }
 
-    private fun restoreForm(): IncidentFormUiState? = savedStateHandle.get<String>(SAVED_FORM_KEY)
+    private fun restoreForm(): IncidentFormUiState.Ready? = savedStateHandle.get<String>(SAVED_FORM_KEY)
         ?.let { runCatching { Json.decodeFromString<SavedForm>(it) }.getOrNull() }
         ?.toUiState(incidentId)
 
@@ -92,7 +97,7 @@ internal data class SavedForm(
     @Serializable
     data class SavedPhoto(val uri: String, val storedId: String? = null)
 
-    fun toUiState(incidentId: String?) = IncidentFormUiState(
+    fun toUiState(incidentId: String?) = IncidentFormUiState.Ready(
         incidentId = incidentId,
         title = title,
         location = location,
@@ -105,7 +110,7 @@ internal data class SavedForm(
     )
 
     companion object {
-        fun from(state: IncidentFormUiState) = SavedForm(
+        fun from(state: IncidentFormUiState.Ready) = SavedForm(
             title = state.title,
             location = state.location,
             description = state.description,

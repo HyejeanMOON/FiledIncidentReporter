@@ -28,6 +28,8 @@ class IncidentFormViewModelTest {
         IncidentFormReducer(ValidateIncidentDraftUseCase()),
     )
 
+    private val IncidentFormViewModel.form get() = uiState.value as IncidentFormUiState.Ready
+
     @Test
     fun `mixed photo edit sends only removed stored ids and new local photos`() {
         val viewModel = viewModel(SavedStateHandle(mapOf("incidentId" to "incident-1")))
@@ -39,7 +41,7 @@ class IncidentFormViewModelTest {
         assertEquals("incident-1", id)
         assertEquals(listOf("photo-B"), deletedIds)
         assertEquals(listOf(first, IncidentPhoto.Local("content://photos/new")), draft.photos)
-        assertEquals(true, viewModel.uiState.value.isSaved)
+        assertEquals(true, viewModel.form.isSaved)
     }
 
     @Test
@@ -48,13 +50,13 @@ class IncidentFormViewModelTest {
         viewModel.onEvent(IncidentFormUiEvent.TitleChanged("Title"))
         viewModel.onEvent(IncidentFormUiEvent.LocationChanged("Room"))
         viewModel.onEvent(IncidentFormUiEvent.DescriptionChanged("Description"))
-        assertEquals(false, viewModel.uiState.value.isSubmitEnabled)
+        assertEquals(false, viewModel.form.isSubmitEnabled)
 
         viewModel.onEvent(IncidentFormUiEvent.PhotosSelected(listOf("content://photos/1")))
-        assertEquals(true, viewModel.uiState.value.isSubmitEnabled)
+        assertEquals(true, viewModel.form.isSubmitEnabled)
 
         viewModel.onEvent(IncidentFormUiEvent.PhotosRemoved)
-        assertEquals(false, viewModel.uiState.value.isSubmitEnabled)
+        assertEquals(false, viewModel.form.isSubmitEnabled)
     }
 
     @Test
@@ -64,9 +66,9 @@ class IncidentFormViewModelTest {
 
         // A new ViewModel on the same handle simulates process death.
         val restored = viewModel(handle)
-        assertEquals(listOf(first, second, IncidentPhoto.Local("content://photos/2")), restored.uiState.value.photos)
+        assertEquals(listOf(first, second, IncidentPhoto.Local("content://photos/2")), restored.form.photos)
 
         restored.onEvent(IncidentFormUiEvent.PhotoRemoved(first))
-        assertEquals(listOf("photo-A"), restored.uiState.value.deletedPhotoIds)
+        assertEquals(listOf("photo-A"), restored.form.deletedPhotoIds)
     }
 }

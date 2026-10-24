@@ -5,39 +5,46 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 
-data class IncidentFormUiState(
-    /** Null while creating a new report. */
-    val incidentId: String? = null,
-    val isLoading: Boolean = false,
-    val loadFailure: IncidentFailure? = null,
-    val title: String = "",
-    val location: String = "",
-    val description: String = "",
-    val photos: List<IncidentPhoto> = emptyList(),
-    val originalPhotoIds: List<String> = emptyList(),
-    val missingFields: List<RequiredIncidentField> = emptyList(),
-    val focusedFields: Set<RequiredIncidentField> = emptySet(),
-    /** Fields the user has visited; only these show a "required" error. */
-    val validatedFields: Set<RequiredIncidentField> = emptySet(),
-    val isSaving: Boolean = false,
-    val isSaved: Boolean = false,
-    val error: IncidentFailure? = null,
-) {
-    val isEditing: Boolean get() = incidentId != null
+sealed interface IncidentFormUiState {
+    /** Loading the report to edit. */
+    data object Loading : IncidentFormUiState
 
-    val canEdit: Boolean get() = !isLoading && loadFailure == null && !isSaving && !isSaved
+    /** The report to edit could not be loaded at all. */
+    data class LoadFailed(val failure: IncidentFailure) : IncidentFormUiState
 
-    val isSubmitEnabled: Boolean get() = canEdit && missingFields.isEmpty()
+    data class Ready(
+        /** Null while creating a new report. */
+        val incidentId: String? = null,
+        val title: String = "",
+        val location: String = "",
+        val description: String = "",
+        val photos: List<IncidentPhoto> = emptyList(),
+        val originalPhotoIds: List<String> = emptyList(),
+        val missingFields: List<RequiredIncidentField> = emptyList(),
+        val focusedFields: Set<RequiredIncidentField> = emptySet(),
+        /** Fields the user has visited; only these show a "required" error. */
+        val validatedFields: Set<RequiredIncidentField> = emptySet(),
+        val isSaving: Boolean = false,
+        val isSaved: Boolean = false,
+        /** Shown as a dialog over the form. */
+        val error: IncidentFailure? = null,
+    ) : IncidentFormUiState {
+        val isEditing: Boolean get() = incidentId != null
 
-    val visibleMissingFields: List<RequiredIncidentField> get() = missingFields.filter { it in validatedFields }
+        val canEdit: Boolean get() = !isSaving && !isSaved
 
-    val deletedPhotoIds: List<String>
-        get() {
-            val retainedIds = photos.filterIsInstance<IncidentPhoto.Stored>().map(IncidentPhoto.Stored::id).toSet()
-            return originalPhotoIds.filterNot(retainedIds::contains)
-        }
+        val isSubmitEnabled: Boolean get() = canEdit && missingFields.isEmpty()
 
-    fun toDraft() = IncidentDraft(title, location, description, photos)
+        val visibleMissingFields: List<RequiredIncidentField> get() = missingFields.filter { it in validatedFields }
+
+        val deletedPhotoIds: List<String>
+            get() {
+                val retainedIds = photos.filterIsInstance<IncidentPhoto.Stored>().map(IncidentPhoto.Stored::id).toSet()
+                return originalPhotoIds.filterNot(retainedIds::contains)
+            }
+
+        fun toDraft() = IncidentDraft(title, location, description, photos)
+    }
 }
 
 sealed interface IncidentFormUiEvent {
