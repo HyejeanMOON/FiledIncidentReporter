@@ -14,7 +14,8 @@
     <string name="updated_at_label">Updated</string>
     <string name="photos_label">Photos</string>
     <string name="photos_help">Add pictures that help identify the issue.</string>
-    <string name="choose_photos">Choose photos</string>
+    <string name="add_photos">Add photos</string>
+    <string name="choose_photos">Choose from library</string>
     <string name="take_photo">Take photo</string>
     <string name="remove_photos">Remove all photos</string>
     <string name="remove_photo">Remove</string>

@@ -4,19 +4,27 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +35,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -227,22 +238,12 @@ private fun PhotoSection(
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = onChoosePhotos,
-                modifier = Modifier.reportFocus(RequiredIncidentField.PHOTOS, onEvent),
-                enabled = uiState.canEdit,
-            ) {
-                Text(stringResource(R.string.choose_photos))
-            }
-            OutlinedButton(
-                onClick = onTakePhoto,
-                modifier = Modifier.reportFocus(RequiredIncidentField.PHOTOS, onEvent),
-                enabled = uiState.canEdit,
-            ) {
-                Text(stringResource(R.string.take_photo))
-            }
-        }
+        AddPhotosButton(
+            enabled = uiState.canEdit,
+            onChoosePhotos = onChoosePhotos,
+            onTakePhoto = onTakePhoto,
+            modifier = Modifier.reportFocus(RequiredIncidentField.PHOTOS, onEvent),
+        )
         if (uiState.photos.isNotEmpty()) {
             Text(
                 text = stringResource(R.string.photos_selected, uiState.photos.size),
@@ -264,6 +265,47 @@ private fun PhotoSection(
             TextButton(onClick = { onEvent(IncidentFormUiEvent.PhotosRemoved) }, enabled = uiState.canEdit) {
                 Text(stringResource(R.string.remove_photos))
             }
+        }
+    }
+}
+
+@Composable
+private fun AddPhotosButton(
+    enabled: Boolean,
+    onChoosePhotos: () -> Unit,
+    onTakePhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = modifier,
+            enabled = enabled,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.add_photos))
+        }
+        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.take_photo)) },
+                onClick = {
+                    expanded = false
+                    onTakePhoto()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.choose_photos)) },
+                onClick = {
+                    expanded = false
+                    onChoosePhotos()
+                },
+            )
         }
     }
 }
