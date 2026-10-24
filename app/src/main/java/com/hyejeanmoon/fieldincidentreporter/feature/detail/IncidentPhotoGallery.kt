@@ -5,19 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,14 +20,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoImage
+import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentPhotoViewer
 import kotlinx.coroutines.launch
 
 @Composable
@@ -74,59 +65,13 @@ internal fun IncidentPhotoGallery(photoUrls: List<String>) {
     }
 
     if (viewerPage >= 0) {
-        val fullScreenPagerState = rememberPagerState(
+        IncidentPhotoViewer(
+            photoUris = photoUrls,
             initialPage = viewerPage,
-            pageCount = { photoUrls.size },
+            onDismiss = { page ->
+                viewerPage = -1
+                coroutineScope.launch { pagerState.scrollToPage(page) }
+            },
         )
-        fun closeViewer() {
-            val page = fullScreenPagerState.currentPage
-            viewerPage = -1
-            coroutineScope.launch { pagerState.scrollToPage(page) }
-        }
-        Dialog(
-            onDismissRequest = ::closeViewer,
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-                Box(Modifier.fillMaxSize()) {
-                    HorizontalPager(
-                        state = fullScreenPagerState,
-                        modifier = Modifier.fillMaxSize(),
-                    ) { page ->
-                        IncidentPhotoImage(
-                            uri = photoUrls[page],
-                            index = page,
-                            modifier = Modifier.fillMaxSize().padding(8.dp),
-                            fullResolution = true,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.TopCenter)
-                            .background(Color.Black.copy(alpha = 0.72f))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = ::closeViewer) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.close_photo_viewer),
-                                tint = Color.White,
-                            )
-                        }
-                        Text(
-                            text = stringResource(
-                                R.string.photo_page_count,
-                                fullScreenPagerState.currentPage + 1,
-                                photoUrls.size,
-                            ),
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                }
-            }
-        }
     }
 }
