@@ -9,7 +9,7 @@ if ! command -v java >/dev/null 2>&1; then
 fi
 
 mkdir -p incident-photos
-./mvnw -Dkotlin.compiler.daemon=false -DskipTests package
+./mvnw -Dkotlin.compiler.daemon=false -DskipTests clean package
 
 # Starting Spring without the web server runs Flyway and creates the H2 database.
 java -jar target/filed-incident-reporter-server-0.0.1-SNAPSHOT.jar \

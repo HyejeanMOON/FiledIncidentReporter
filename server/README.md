@@ -15,7 +15,7 @@ Maven is not needed; `./mvnw` downloads it on first use.
 ./start.sh
 ```
 
-Run `./init.sh` once after cloning the project. It builds the application, creates the photo directory and local H2 database, and applies the Flyway migrations without starting the HTTP server. Run `./start.sh` for normal use; it listens on `http://localhost:8080` by default. Arguments to `start.sh` are passed to Spring Boot, for example `./start.sh --server.port=8081`.
+Run `./init.sh` once after cloning the project. It builds the application, creates the photo directory and local H2 database, and creates the schema with Flyway without starting the HTTP server. Run `./start.sh` for normal use; it listens on `http://localhost:8080` by default. Arguments to `start.sh` are passed to Spring Boot, for example `./start.sh --server.port=8081`.
 
 Re-run `./init.sh` after changing application code or dependencies to rebuild the JAR. Existing incidents and photos are preserved.
 
@@ -39,7 +39,7 @@ Each photo object contains a stable `id`, a relative `url`, and a relative `thum
 
 `DELETE /incidents/{id}` removes an incident and its stored photo files, then returns `204 No Content`. A missing ID returns `404 Not Found`.
 
-Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway applies database migrations when the server starts, including photo IDs, an `updated_at` value initialized from `created_at` for existing records, and the nullable `resolved_at` column. The database file is ignored by Git.
+Incident data is stored in a local H2 database file (`incidents-db.mv.db`). Flyway creates the schema from a single script (`V1__create_incidents.sql`) when the server starts. The schema has no upgrade path yet, so after changing that script, delete `incidents-db.mv.db` and re-run `./init.sh`. The database file is ignored by Git.
 
 ## Test and package
 
