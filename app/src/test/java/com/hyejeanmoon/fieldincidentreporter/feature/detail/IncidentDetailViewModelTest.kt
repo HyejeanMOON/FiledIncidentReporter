@@ -3,8 +3,6 @@ package com.hyejeanmoon.fieldincidentreporter.feature.detail
 import androidx.lifecycle.SavedStateHandle
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.testing.MainDispatcherRule
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident
@@ -21,8 +19,7 @@ class IncidentDetailViewModelTest {
 
     private fun viewModel() = IncidentDetailViewModel(
         SavedStateHandle(mapOf("incidentId" to "incident-1")),
-        GetIncidentUseCase(repository),
-        DeleteIncidentUseCase(repository),
+        repository,
     )
 
     @Test

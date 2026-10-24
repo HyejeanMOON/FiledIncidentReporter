@@ -5,8 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.DeleteIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,8 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class IncidentDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val getIncident: GetIncidentUseCase,
-    private val deleteIncident: DeleteIncidentUseCase,
+    private val repository: IncidentRepository,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentDetailRoute().incidentId
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
@@ -39,7 +37,7 @@ class IncidentDetailViewModel @Inject constructor(
     private fun load() {
         _uiState.update { it.copy(loadFailure = null) }
         viewModelScope.launch {
-            runSuspendCatching { getIncident(incidentId) }
+            runSuspendCatching { repository.getIncident(incidentId) }
                 .onSuccess { incident -> _uiState.update { it.copy(incident = incident) } }
                 .onFailure { error -> _uiState.update { it.copy(loadFailure = error.toIncidentFailure()) } }
         }
@@ -50,7 +48,7 @@ class IncidentDetailViewModel @Inject constructor(
         if (state.incident == null || state.isDeleting) return
         _uiState.update { it.copy(isDeleting = true, error = null) }
         viewModelScope.launch {
-            runSuspendCatching { deleteIncident(incidentId) }
+            runSuspendCatching { repository.delete(incidentId) }
                 // Stay in the deleting state so that nothing can be pressed while the screen closes.
                 .onSuccess { _uiState.update { it.copy(isDeleted = true) } }
                 .onFailure { error ->

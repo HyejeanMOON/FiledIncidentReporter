@@ -2,7 +2,6 @@ package com.hyejeanmoon.fieldincidentreporter.feature.form
 
 import androidx.lifecycle.SavedStateHandle
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
@@ -24,7 +23,7 @@ class IncidentFormViewModelTest {
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) = IncidentFormViewModel(
         handle,
-        GetIncidentUseCase(repository),
+        repository,
         SaveIncidentUseCase(repository),
         ValidateIncidentDraftUseCase(),
     )

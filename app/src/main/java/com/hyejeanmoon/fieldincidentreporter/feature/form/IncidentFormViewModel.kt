@@ -8,7 +8,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.GetIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class IncidentFormViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
-    private val getIncident: GetIncidentUseCase,
+    private val repository: IncidentRepository,
     private val saveIncident: SaveIncidentUseCase,
     private val validateIncidentDraft: ValidateIncidentDraftUseCase,
 ) : ViewModel() {
@@ -59,7 +59,7 @@ class IncidentFormViewModel @Inject constructor(
         val id = incidentId ?: return
         _uiState.update { it.copy(isLoading = true, loadFailure = null) }
         viewModelScope.launch {
-            runSuspendCatching { getIncident(id) }
+            runSuspendCatching { repository.getIncident(id) }
                 .onSuccess { incident -> setForm(_uiState.value.filledWith(incident)) }
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, loadFailure = error.toIncidentFailure()) }
