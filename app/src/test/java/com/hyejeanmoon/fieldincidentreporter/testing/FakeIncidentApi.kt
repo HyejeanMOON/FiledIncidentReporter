@@ -5,6 +5,8 @@ import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentBody
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentDto
 import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentPageDto
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
 import retrofit2.Response
 import java.time.Instant
 
@@ -21,7 +23,10 @@ internal class FakeIncidentApi(var incidents: List<IncidentDto>) : IncidentApi {
         return IncidentPageDto(items, items.lastOrNull()?.takeIf { rest.size > size }?.let(::cursorAfter))
     }
 
-    override suspend fun getIncident(id: String): IncidentDto = error("Not used by these tests")
+    override suspend fun getIncident(id: String): IncidentDto {
+        failure?.let { throw it }
+        return incidents.find { it.id == id } ?: throw HttpException(Response.error<IncidentDto>(404, "".toResponseBody()))
+    }
 
     override suspend fun create(incident: IncidentBody, photos: List<MultipartBody.Part>): IncidentDto =
         error("Not used by these tests")

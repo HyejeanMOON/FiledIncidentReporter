@@ -17,6 +17,8 @@ import com.hyejeanmoon.fieldincidentreporter.data.remote.dto.IncidentDto
 import com.hyejeanmoon.fieldincidentreporter.data.remote.incidentRequest
 import com.hyejeanmoon.fieldincidentreporter.data.remote.photoPart
 import com.hyejeanmoon.fieldincidentreporter.data.remote.toIncident
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentException
+import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentDraft
@@ -46,8 +48,16 @@ internal class OfflineFirstIncidentRepository @Inject constructor(
         pagingSourceFactory = dao::pagingSource,
     ).flow.map { data -> data.map(IncidentEntity::toIncident) }
 
-    override suspend fun getIncident(id: String): Incident = incidentRequest {
-        api.getIncident(id).toIncident(baseUrl)
+    /** A lookup also refreshes the cached copy, and a report the server no longer has leaves the cache. */
+    override suspend fun getIncident(id: String): Incident {
+        val incident = try {
+            incidentRequest { api.getIncident(id).toIncident(baseUrl) }
+        } catch (error: IncidentException) {
+            if (error.failure == IncidentFailure.NOT_FOUND) updateCache("lookup") { dao.delete(listOf(id)) }
+            throw error
+        }
+        updateCache("lookup") { dao.refreshCached(incident.toEntity()) }
+        return incident
     }
 
     override suspend fun create(draft: IncidentDraft): Incident = save {

@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -46,7 +48,11 @@ import com.hyejeanmoon.fieldincidentreporter.ui.component.LabeledText
 import com.hyejeanmoon.fieldincidentreporter.ui.component.LoadingContent
 import com.hyejeanmoon.fieldincidentreporter.ui.theme.FieldIncidentReporterTheme
 import com.hyejeanmoon.fieldincidentreporter.ui.util.formatIncidentTime
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 @Composable
@@ -63,6 +69,16 @@ internal fun IncidentListScreen(
             incidents.refresh()
             onRefreshRequestHandled()
         }
+    }
+    // Reports changed elsewhere, such as in the web admin, show up when the app returns to the foreground.
+    // The state when the list appears is skipped, since the Pager refreshes on its own then.
+    LaunchedEffect(incidents) {
+        ProcessLifecycleOwner.get().lifecycle.currentStateFlow
+            .map { it.isAtLeast(Lifecycle.State.STARTED) }
+            .distinctUntilChanged()
+            .drop(1)
+            .filter { it }
+            .collect { incidents.refresh() }
     }
     IncidentListContent(
         incidents = incidents,

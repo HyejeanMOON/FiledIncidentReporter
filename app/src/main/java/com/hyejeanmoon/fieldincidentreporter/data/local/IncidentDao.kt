@@ -18,6 +18,9 @@ internal abstract class IncidentDao {
     @Query("DELETE FROM incidents WHERE id IN (:ids)")
     abstract suspend fun delete(ids: List<String>)
 
+    @Query("SELECT * FROM incidents WHERE id = :id")
+    abstract suspend fun get(id: String): IncidentEntity?
+
     /** Rows after the [afterCreatedAt] position, or from the top when it is null, through the last position. */
     @Query(
         "SELECT * FROM incidents " +
@@ -55,6 +58,16 @@ internal abstract class IncidentDao {
         }
         return cachedFromLast
     }
+
+    /**
+     * Replaces the cached copy of one report with a fresh server [incident]. A report that is not cached
+     * is not added, since the reports between it and the cached ones would be missing from the list.
+     */
+    @Transaction
+    open suspend fun refreshCached(incident: IncidentEntity) {
+        val cached = get(incident.id) ?: return
+        if (incident.replaces(cached)) upsert(listOf(incident))
+    }
 }
 
 /** The writes that make the cached rows within one server page's span match that page. */
@@ -64,12 +77,14 @@ internal fun pageChanges(cached: List<IncidentEntity>, page: List<IncidentEntity
     val cachedById = cached.associateBy(IncidentEntity::id)
     val pageIds = page.mapTo(HashSet(), IncidentEntity::id)
     return PageChanges(
-        // Identical rows are skipped, and a newer copy saved by this app is not replaced by an older response.
         upserts = page.filter { row ->
             val old = cachedById[row.id]
-            old == null || old != row && row.updatedAt >= old.updatedAt
+            old == null || row.replaces(old)
         },
         // A cached row inside the page's span that the server no longer returns was deleted there.
         deletedIds = cached.map(IncidentEntity::id).filterNot(pageIds::contains),
     )
 }
+
+/** Identical copies are skipped, and a newer copy saved by this app is not replaced by an older response. */
+private fun IncidentEntity.replaces(cached: IncidentEntity) = this != cached && updatedAt >= cached.updatedAt

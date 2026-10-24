@@ -26,6 +26,8 @@ internal class FakeIncidentDao(rows: List<IncidentEntity> = emptyList()) : Incid
         ids.forEach(rows::remove)
     }
 
+    override suspend fun get(id: String) = rows[id]
+
     override suspend fun range(afterCreatedAt: Long?, afterId: String?, lastCreatedAt: Long, lastId: String) =
         list.filter { row ->
             (afterCreatedAt == null || row.compareTo(afterCreatedAt, afterId!!) < 0) && row.compareTo(lastCreatedAt, lastId) >= 0
