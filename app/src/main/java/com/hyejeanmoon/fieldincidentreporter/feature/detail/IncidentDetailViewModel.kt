@@ -19,7 +19,7 @@ class IncidentDetailViewModel @Inject constructor(
     private val reducer: IncidentDetailReducer,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentDetailRoute().incidentId
-    private val _uiState = MutableStateFlow(IncidentDetailUiState())
+    private val _uiState = MutableStateFlow<IncidentDetailUiState>(IncidentDetailUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
     init {
@@ -30,9 +30,12 @@ class IncidentDetailViewModel @Inject constructor(
         val previous = _uiState.value
         val state = reducer.reduce(previous, action)
         _uiState.value = state
-        // The reducer only marks the work as started; it runs here.
-        if (state.isLoading && !previous.isLoading) load()
-        if (state.isDeleting && !previous.isDeleting) delete()
+        // The reducer only marks the work as started, and leaves the state alone when it should not start.
+        if (state != previous) when (action) {
+            IncidentDetailAction.Retry -> load()
+            IncidentDetailAction.Delete -> delete()
+            IncidentDetailAction.ErrorDismissed -> Unit
+        }
     }
 
     private fun load() {

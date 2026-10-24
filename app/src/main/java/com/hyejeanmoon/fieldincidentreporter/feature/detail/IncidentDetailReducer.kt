@@ -19,17 +19,19 @@ sealed interface IncidentDetailResult {
 class IncidentDetailReducer @Inject constructor() {
     fun reduce(state: IncidentDetailUiState, action: IncidentDetailAction): IncidentDetailUiState = when (action) {
         IncidentDetailAction.Retry ->
-            if (state.loadFailure != null) state.copy(isLoading = true, loadFailure = null) else state
-        IncidentDetailAction.Delete ->
-            if (state.incident != null && !state.isDeleting) state.copy(isDeleting = true, error = null) else state
-        IncidentDetailAction.ErrorDismissed -> state.copy(error = null)
+            if (state is IncidentDetailUiState.LoadFailed) IncidentDetailUiState.Loading else state
+        IncidentDetailAction.Delete -> state.ifLoaded { if (isDeleting) this else copy(isDeleting = true, error = null) }
+        IncidentDetailAction.ErrorDismissed -> state.ifLoaded { copy(error = null) }
     }
 
     fun reduce(state: IncidentDetailUiState, result: IncidentDetailResult): IncidentDetailUiState = when (result) {
-        is IncidentDetailResult.Loaded -> state.copy(isLoading = false, incident = result.incident)
-        is IncidentDetailResult.LoadFailed -> state.copy(isLoading = false, loadFailure = result.failure)
-        // Stay in the deleting state so that nothing can be pressed while the screen closes.
-        IncidentDetailResult.Deleted -> state.copy(isDeleted = true)
-        is IncidentDetailResult.DeleteFailed -> state.copy(isDeleting = false, error = result.failure)
+        is IncidentDetailResult.Loaded -> IncidentDetailUiState.Loaded(result.incident)
+        is IncidentDetailResult.LoadFailed -> IncidentDetailUiState.LoadFailed(result.failure)
+        IncidentDetailResult.Deleted -> state.ifLoaded { copy(isDeleted = true) }
+        is IncidentDetailResult.DeleteFailed -> state.ifLoaded { copy(isDeleting = false, error = result.failure) }
     }
 }
+
+private inline fun IncidentDetailUiState.ifLoaded(
+    transform: IncidentDetailUiState.Loaded.() -> IncidentDetailUiState,
+) = if (this is IncidentDetailUiState.Loaded) transform() else this

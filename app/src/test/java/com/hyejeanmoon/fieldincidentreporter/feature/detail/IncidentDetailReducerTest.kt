@@ -7,27 +7,25 @@ import org.junit.Test
 
 class IncidentDetailReducerTest {
     private val reducer = IncidentDetailReducer()
-    private val loaded = reducer.reduce(IncidentDetailUiState(), IncidentDetailResult.Loaded(testIncident()))
+    private val loaded = IncidentDetailUiState.Loaded(testIncident())
 
     @Test
     fun `retry restarts loading only after a load failure`() {
         val failed = reducer.reduce(
-            IncidentDetailUiState(),
+            IncidentDetailUiState.Loading,
             IncidentDetailResult.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE),
         )
 
-        val retried = reducer.reduce(failed, IncidentDetailAction.Retry)
-        assertEquals(true, retried.isLoading)
-        assertEquals(null, retried.loadFailure)
+        assertEquals(IncidentDetailUiState.Loading, reducer.reduce(failed, IncidentDetailAction.Retry))
         assertEquals(loaded, reducer.reduce(loaded, IncidentDetailAction.Retry))
     }
 
     @Test
     fun `delete starts only once and only for a loaded report`() {
-        assertEquals(false, reducer.reduce(IncidentDetailUiState(), IncidentDetailAction.Delete).isDeleting)
+        assertEquals(IncidentDetailUiState.Loading, reducer.reduce(IncidentDetailUiState.Loading, IncidentDetailAction.Delete))
 
         val deleting = reducer.reduce(loaded, IncidentDetailAction.Delete)
-        assertEquals(true, deleting.isDeleting)
+        assertEquals(loaded.copy(isDeleting = true), deleting)
         assertEquals(deleting, reducer.reduce(deleting, IncidentDetailAction.Delete))
     }
 
@@ -36,8 +34,7 @@ class IncidentDetailReducerTest {
         val deleting = reducer.reduce(loaded, IncidentDetailAction.Delete)
 
         val failed = reducer.reduce(deleting, IncidentDetailResult.DeleteFailed(IncidentFailure.SERVER_ERROR))
-        assertEquals(false, failed.isDeleting)
-        assertEquals(IncidentFailure.SERVER_ERROR, failed.error)
-        assertEquals(null, reducer.reduce(failed, IncidentDetailAction.ErrorDismissed).error)
+        assertEquals(loaded.copy(error = IncidentFailure.SERVER_ERROR), failed)
+        assertEquals(loaded, reducer.reduce(failed, IncidentDetailAction.ErrorDismissed))
     }
 }

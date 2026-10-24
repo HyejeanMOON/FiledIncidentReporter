@@ -3,16 +3,21 @@ package com.hyejeanmoon.fieldincidentreporter.feature.detail
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 
-data class IncidentDetailUiState(
-    val isLoading: Boolean = true,
-    val incident: Incident? = null,
-    /** Set when the report could not be loaded at all. */
-    val loadFailure: IncidentFailure? = null,
-    val isDeleting: Boolean = false,
-    val isDeleted: Boolean = false,
-    /** Shown as a dialog over the loaded report. */
-    val error: IncidentFailure? = null,
-)
+sealed interface IncidentDetailUiState {
+    data object Loading : IncidentDetailUiState
+
+    /** The report could not be loaded at all. */
+    data class LoadFailed(val failure: IncidentFailure) : IncidentDetailUiState
+
+    data class Loaded(
+        val incident: Incident,
+        val isDeleting: Boolean = false,
+        /** Set once the report is gone; [isDeleting] stays set so nothing can be pressed while the screen closes. */
+        val isDeleted: Boolean = false,
+        /** Shown as a dialog over the report. */
+        val error: IncidentFailure? = null,
+    ) : IncidentDetailUiState
+}
 
 sealed interface IncidentDetailAction {
     data object Retry : IncidentDetailAction

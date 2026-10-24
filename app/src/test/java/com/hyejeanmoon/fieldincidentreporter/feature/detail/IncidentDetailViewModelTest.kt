@@ -27,13 +27,12 @@ class IncidentDetailViewModelTest {
     fun `failed load can be retried`() {
         repository.failure = IncidentException(IncidentFailure.NETWORK_UNAVAILABLE, IOException())
         val viewModel = viewModel()
-        assertEquals(IncidentFailure.NETWORK_UNAVAILABLE, viewModel.uiState.value.loadFailure)
+        assertEquals(IncidentDetailUiState.LoadFailed(IncidentFailure.NETWORK_UNAVAILABLE), viewModel.uiState.value)
 
         repository.failure = null
         viewModel.onAction(IncidentDetailAction.Retry)
 
-        assertEquals(null, viewModel.uiState.value.loadFailure)
-        assertEquals("incident-1", viewModel.uiState.value.incident?.id)
+        assertEquals(IncidentDetailUiState.Loaded(testIncident()), viewModel.uiState.value)
     }
 
     @Test
@@ -41,7 +40,9 @@ class IncidentDetailViewModelTest {
         val viewModel = viewModel()
         viewModel.onAction(IncidentDetailAction.Delete)
 
-        assertEquals(true, viewModel.uiState.value.isDeleted)
-        assertEquals(true, viewModel.uiState.value.isDeleting)
+        assertEquals(
+            IncidentDetailUiState.Loaded(testIncident(), isDeleting = true, isDeleted = true),
+            viewModel.uiState.value,
+        )
     }
 }

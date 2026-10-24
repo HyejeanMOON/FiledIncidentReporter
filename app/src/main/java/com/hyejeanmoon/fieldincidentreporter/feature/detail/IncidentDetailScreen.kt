@@ -43,31 +43,31 @@ internal fun IncidentDetailScreen(
     onEdit: (String) -> Unit,
     viewModel: IncidentDetailViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    BackHandler(enabled = uiState.isDeleting) { }
-    if (uiState.isDeleted) LaunchedEffect(Unit) { onDeleted() }
-
-    val incident = uiState.incident
-    val loadFailure = uiState.loadFailure
-    when {
-        incident != null -> IncidentDetailContent(
-            incident = incident,
-            isDeleting = uiState.isDeleting,
-            onBack = onBack,
-            onEdit = { onEdit(incident.id) },
-            onDelete = { viewModel.onAction(IncidentDetailAction.Delete) },
-        )
-        loadFailure != null -> IncidentLoadFailureScreen(
+    when (val uiState = viewModel.uiState.collectAsStateWithLifecycle().value) {
+        IncidentDetailUiState.Loading -> LoadingContent(Modifier.fillMaxSize())
+        is IncidentDetailUiState.LoadFailed -> IncidentLoadFailureScreen(
             title = stringResource(R.string.incident_details_title),
-            failure = loadFailure,
+            failure = uiState.failure,
             onBack = onBack,
             onRetry = { viewModel.onAction(IncidentDetailAction.Retry) },
         )
-        else -> LoadingContent(Modifier.fillMaxSize())
-    }
-
-    uiState.error?.let { error ->
-        IncidentErrorDialog(failure = error, onDismiss = { viewModel.onAction(IncidentDetailAction.ErrorDismissed) })
+        is IncidentDetailUiState.Loaded -> {
+            BackHandler(enabled = uiState.isDeleting) { }
+            if (uiState.isDeleted) LaunchedEffect(Unit) { onDeleted() }
+            IncidentDetailContent(
+                incident = uiState.incident,
+                isDeleting = uiState.isDeleting,
+                onBack = onBack,
+                onEdit = { onEdit(uiState.incident.id) },
+                onDelete = { viewModel.onAction(IncidentDetailAction.Delete) },
+            )
+            uiState.error?.let { error ->
+                IncidentErrorDialog(
+                    failure = error,
+                    onDismiss = { viewModel.onAction(IncidentDetailAction.ErrorDismissed) },
+                )
+            }
+        }
     }
 }
 
