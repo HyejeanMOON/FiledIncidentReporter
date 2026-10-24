@@ -13,6 +13,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentApi
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentDao
+import com.hyejeanmoon.fieldincidentreporter.testing.cursorAfter
 import com.hyejeanmoon.fieldincidentreporter.testing.testTime
 import kotlinx.coroutines.test.runTest
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -42,7 +43,7 @@ class IncidentRemoteMediatorTest {
 
         assertEquals(listOf(edited.cached()), dao.upserted)
         assertEquals(server.map { it.id }, dao.list.map { it.id })
-        assertEquals(listOf(0), api.requestedPages.distinct())
+        assertEquals(listOf(null), api.requestedCursors.distinct())
     }
 
     @Test
@@ -68,11 +69,26 @@ class IncidentRemoteMediatorTest {
         mediator.load(LoadType.REFRESH, state)
 
         assertEquals(false, mediator.load(LoadType.APPEND, state).endOfPagination())
-        assertEquals(listOf(0, 1, 2), api.requestedPages)
+        val pageCursors = listOf(null, cursorAfter(report(19)), cursorAfter(report(39)))
+        assertEquals(pageCursors, api.requestedCursors)
         assertEquals(server.take(60).map { it.id }, dao.list.map { it.id })
 
         assertEquals(true, mediator.load(LoadType.APPEND, state).endOfPagination())
-        assertEquals(listOf(0, 1, 2, 3), api.requestedPages)
+        assertEquals(pageCursors + cursorAfter(report(59)), api.requestedCursors)
+        assertEquals(server.map { it.id }, dao.list.map { it.id })
+    }
+
+    @Test
+    fun `append removes a cached report deleted between two server pages`() = runTest {
+        val cached = reports(0 until 45)
+        val dao = FakeIncidentDao(cached.map { it.cached() })
+        val server = cached.filterNot { it.id == id(20) }
+        val mediator = IncidentRemoteMediator(FakeIncidentApi(server), dao, baseUrl)
+        mediator.load(LoadType.REFRESH, state)
+
+        mediator.load(LoadType.APPEND, state)
+
+        assertEquals(listOf(id(20)), dao.deleted)
         assertEquals(server.map { it.id }, dao.list.map { it.id })
     }
 

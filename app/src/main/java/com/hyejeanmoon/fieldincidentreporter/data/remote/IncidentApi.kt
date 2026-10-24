@@ -18,8 +18,9 @@ internal interface IncidentApi {
     @GET("incidents/{id}")
     suspend fun getIncident(@Path("id") id: String): IncidentDto
 
+    /** A null [cursor] asks for the first page; otherwise it is the `nextCursor` of the page before. */
     @GET("incidents")
-    suspend fun getIncidents(@Query("page") page: Int, @Query("size") size: Int): IncidentPageDto
+    suspend fun getIncidents(@Query("cursor") cursor: String?, @Query("size") size: Int): IncidentPageDto
 
     @Multipart
     @POST("incidents")

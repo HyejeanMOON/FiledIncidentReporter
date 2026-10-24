@@ -26,28 +26,28 @@ internal class IncidentRemoteMediator(
     private val baseUrl: HttpUrl,
 ) : RemoteMediator<Int, IncidentEntity>() {
     // Every Pager starts with a refresh, so the position only needs to last as long as this mediator.
-    private var nextPage: Int? = null
+    private var nextCursor: String? = null
     private var lastSynced: IncidentEntity? = null
 
     override suspend fun load(loadType: LoadType, state: PagingState<Int, IncidentEntity>): MediatorResult {
-        val startPage = when (loadType) {
-            LoadType.REFRESH -> 0
+        var cursor = when (loadType) {
+            LoadType.REFRESH -> null
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-            LoadType.APPEND -> nextPage ?: return MediatorResult.Success(endOfPaginationReached = true)
+            LoadType.APPEND -> nextCursor ?: return MediatorResult.Success(endOfPaginationReached = true)
         }
         return runSuspendCatching<MediatorResult> {
-            var page = startPage
             do {
-                val response = incidentRequest { api.getIncidents(page, INCIDENT_PAGE_SIZE) }
+                val response = incidentRequest { api.getIncidents(cursor, INCIDENT_PAGE_SIZE) }
                 val rows = response.items.map { it.toIncident(baseUrl).toEntity() }
-                val previous = if (page == 0) null else lastSynced
-                val cachedFromLast = dao.syncPage(rows, previous, isLastPage = !response.hasNext)
+                // A cursor continues right after the last report synced, so no cached row falls between pages.
+                val previous = if (cursor == null) null else lastSynced
+                val cachedFromLast = dao.syncPage(rows, previous, isLastPage = response.nextCursor == null)
                 lastSynced = rows.lastOrNull() ?: previous
-                nextPage = (page + 1).takeIf { response.hasNext }
-                page++
+                nextCursor = response.nextCursor
+                cursor = response.nextCursor
                 // Until a page reaches past the cached rows, the end of the list has not moved, so keep syncing.
-            } while (loadType == LoadType.APPEND && nextPage != null && cachedFromLast)
-            MediatorResult.Success(endOfPaginationReached = nextPage == null)
+            } while (loadType == LoadType.APPEND && cursor != null && cachedFromLast)
+            MediatorResult.Success(endOfPaginationReached = nextCursor == null)
         }.getOrElse(MediatorResult::Error)
     }
 }

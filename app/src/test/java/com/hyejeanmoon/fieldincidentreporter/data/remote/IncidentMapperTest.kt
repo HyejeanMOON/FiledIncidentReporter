@@ -15,7 +15,7 @@ class IncidentMapperTest {
     @Test
     fun `list and detail photos resolve the full image URL against the api origin`() {
         val listItem = ApiJson.decodeFromString<IncidentPageDto>(
-            """{"items":[$IncidentJson],"page":0,"size":20,"hasNext":false}""",
+            """{"items":[$IncidentJson],"nextCursor":null}""",
         ).items.single().toIncident(baseUrl)
         val detail = ApiJson.decodeFromString<IncidentDto>(IncidentJson).toIncident(baseUrl)
 

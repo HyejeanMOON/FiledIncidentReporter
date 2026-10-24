@@ -20,12 +20,11 @@ internal data class IncidentPhotoDto(
     val thumbnailUrl: String,
 )
 
+/** [nextCursor] points just after the last of [items] and is null on the last page. */
 @Serializable
 internal data class IncidentPageDto(
     val items: List<IncidentDto>,
-    val page: Int,
-    val size: Int,
-    val hasNext: Boolean,
+    val nextCursor: String? = null,
 )
 
 @Serializable

@@ -26,18 +26,16 @@ internal class FakeIncidentDao(rows: List<IncidentEntity> = emptyList()) : Incid
         ids.forEach(rows::remove)
     }
 
-    override suspend fun range(firstCreatedAt: Long?, firstId: String?, lastCreatedAt: Long, lastId: String) =
+    override suspend fun range(afterCreatedAt: Long?, afterId: String?, lastCreatedAt: Long, lastId: String) =
         list.filter { row ->
-            (firstCreatedAt == null || row.compareTo(firstCreatedAt, firstId!!) <= 0) && row.compareTo(lastCreatedAt, lastId) >= 0
+            (afterCreatedAt == null || row.compareTo(afterCreatedAt, afterId!!) < 0) && row.compareTo(lastCreatedAt, lastId) >= 0
         }
 
     override suspend fun hasRowsFrom(createdAt: Long, id: String) = rows.values.any { it.compareTo(createdAt, id) <= 0 }
 
-    override suspend fun deleteAfter(createdAt: Long, id: String) {
-        rows.values.filter { it.compareTo(createdAt, id) < 0 }.forEach { delete(listOf(it.id)) }
+    override suspend fun deleteAfter(createdAt: Long?, id: String?) {
+        rows.values.filter { createdAt == null || it.compareTo(createdAt, id!!) < 0 }.forEach { delete(listOf(it.id)) }
     }
-
-    override suspend fun deleteAll() = delete(rows.keys.toList())
 
     /** Positive when this row is newer than the given position, so it comes earlier in the list. */
     private fun IncidentEntity.compareTo(createdAt: Long, id: String): Int =

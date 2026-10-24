@@ -14,13 +14,13 @@ The server listens on port 8080 and stores incidents in a local H2 database. The
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| GET | `/incidents?page=0&size=20` | List reports in pages |
+| GET | `/incidents?size=20&cursor=…` | List reports in keyset pages, newest first |
 | GET | `/incidents/{id}` | Read one report for detail and edit screens |
 | POST | `/incidents` | Create a report with multipart photo files |
 | PATCH | `/incidents/{id}` | Update a report, delete photos by ID, and upload new photo files |
 | DELETE | `/incidents/{id}` | Remove a report |
 
-Each report has string `id`, `title`, `location`, `description`, and `photos` fields, plus server-generated `createdAt` and `updatedAt` timestamps in ISO 8601 UTC. Each photo has a server-generated ID, an original file URL, and a thumbnail URL. The list API returns photo metadata instead of embedded Base64 previews. An update sends `deletePhotoIds` for removed old photos and multipart files for new photos; unchanged photos are not uploaded again. The app displays creation time in the device's local time zone and displays update time only after the report has been edited.
+Each report has string `id`, `title`, `location`, `description`, and `photos` fields, plus server-generated `createdAt` and `updatedAt` timestamps in ISO 8601 UTC. Each photo has a server-generated ID, an original file URL, and a thumbnail URL. The list API returns photo metadata instead of embedded Base64 previews. An update sends `deletePhotoIds` for removed old photos and multipart files for new photos; unchanged photos are not uploaded again. The list is ordered by `createdAt` descending, then `id` descending. A list response has `items` and a `nextCursor`, which is null on the last page; passing it back as `cursor` returns the reports right after the page's last report, so reports added or deleted meanwhile do not shift later pages. The cursor is opaque to the app. The app displays creation time in the device's local time zone and displays update time only after the report has been edited.
 
 ## Run the Android app
 
@@ -30,7 +30,7 @@ For a physical device on the same network, set `incidentApiBaseUrl` to the devel
 
 The project uses Android Gradle Plugin 9.4.0, Gradle 9.6.0, JDK 17, and Android SDK Platform 37. This checkout lacks Gradle wrapper launch scripts and the wrapper JAR; use a locally installed Gradle 9.6.0 or generate the wrapper with `gradle wrapper --gradle-version 9.6.0`.
 
-The list reads reports from Room, so cached reports appear immediately and offline. A Paging 3 `RemoteMediator` keeps Room in sync with the server in pages of 20: it refreshes the first page on first entry, on Refresh or pull-to-refresh, and after returning from a successful create, update, or delete, and it fetches later pages as the user nears the end of the list. Each fetched page is compared with the cached reports in its span, so unchanged reports are skipped, changed or new reports are written, and reports the server no longer returns are removed; the cache is never cleared as a whole. Confirmed saves and deletes also update Room right away. If a refresh fails, the cached reports stay visible with the error. Photos selected in the picker or taken with the camera are uploaded as files.
+The list reads reports from Room, so cached reports appear immediately and offline. A Paging 3 `RemoteMediator` keeps Room in sync with the server in pages of 20: it refreshes the first page on first entry, on Refresh or pull-to-refresh, and after returning from a successful create, update, or delete, and it fetches later pages as the user nears the end of the list. Each fetched page is compared with the cached reports from just after the page before through its own last report, so unchanged reports are skipped, changed or new reports are written, and reports the server no longer returns are removed; the cache is never cleared as a whole. Confirmed saves and deletes also update Room right away. If a refresh fails, the cached reports stay visible with the error. Photos selected in the picker or taken with the camera are uploaded as files.
 
 The API sends RFC 9457 Problem Details with a stable `code`. The data layer maps known codes to app failures. The list shows failed refreshes and page loads inline with Retry while keeping cached reports; report lookups, saves, and deletes use localized error dialogs. Unknown or malformed error bodies fall back to the HTTP status.
 
