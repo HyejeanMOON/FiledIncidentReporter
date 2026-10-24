@@ -25,7 +25,7 @@ class IncidentFormViewModelTest {
         handle,
         repository,
         SaveIncidentUseCase(repository),
-        ValidateIncidentDraftUseCase(),
+        IncidentFormReducer(ValidateIncidentDraftUseCase()),
     )
 
     @Test

@@ -5,16 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
-import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
-import com.hyejeanmoon.fieldincidentreporter.domain.usecase.ValidateIncidentDraftUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -25,11 +22,11 @@ class IncidentFormViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val repository: IncidentRepository,
     private val saveIncident: SaveIncidentUseCase,
-    private val validateIncidentDraft: ValidateIncidentDraftUseCase,
+    private val reducer: IncidentFormReducer,
 ) : ViewModel() {
     private val incidentId = savedStateHandle.toIncidentFormRoute().incidentId
     private val _uiState = MutableStateFlow(
-        restoreForm()?.validated() ?: IncidentFormUiState(incidentId = incidentId, isLoading = incidentId != null).validated(),
+        reducer.validated(restoreForm() ?: IncidentFormUiState(incidentId = incidentId, isLoading = incidentId != null)),
     )
     val uiState = _uiState.asStateFlow()
 
@@ -38,71 +35,39 @@ class IncidentFormViewModel @Inject constructor(
     }
 
     fun onEvent(event: IncidentFormUiEvent) {
-        when (event) {
-            is IncidentFormUiEvent.TitleChanged -> edit { copy(title = event.value) }
-            is IncidentFormUiEvent.LocationChanged -> edit { copy(location = event.value) }
-            is IncidentFormUiEvent.DescriptionChanged -> edit { copy(description = event.value) }
-            is IncidentFormUiEvent.PhotosSelected -> edit {
-                copy(photos = (photos + event.uris.filter(String::isNotBlank).map(IncidentPhoto::Local)).distinct())
-            }
-            is IncidentFormUiEvent.PhotoRemoved -> edit { copy(photos = photos - event.photo).photosVisited() }
-            IncidentFormUiEvent.PhotosRemoved -> edit { copy(photos = emptyList()).photosVisited() }
-            IncidentFormUiEvent.PhotoInputCancelled -> edit { if (photos.isEmpty()) photosVisited() else this }
-            is IncidentFormUiEvent.FieldFocusChanged -> onFocusChanged(event.field, event.isFocused)
-            IncidentFormUiEvent.Submit -> submit()
-            IncidentFormUiEvent.Retry -> load()
-            IncidentFormUiEvent.ErrorDismissed -> _uiState.update { it.copy(error = null) }
-        }
+        val previous = _uiState.value
+        val state = reducer.reduce(previous, event)
+        setState(state)
+        // The reducer only marks the work as started; it runs here.
+        if (state.isLoading && !previous.isLoading) load()
+        if (state.isSaving && !previous.isSaving) save(state)
     }
 
     private fun load() {
         val id = incidentId ?: return
-        _uiState.update { it.copy(isLoading = true, loadFailure = null) }
         viewModelScope.launch {
             runSuspendCatching { repository.getIncident(id) }
-                .onSuccess { incident -> setForm(_uiState.value.filledWith(incident)) }
-                .onFailure { error ->
-                    _uiState.update { it.copy(isLoading = false, loadFailure = error.toIncidentFailure()) }
-                }
+                .onSuccess { onResult(IncidentFormResult.Loaded(it)) }
+                .onFailure { onResult(IncidentFormResult.LoadFailed(it.toIncidentFailure())) }
         }
     }
 
-    private fun onFocusChanged(field: RequiredIncidentField, isFocused: Boolean) {
-        val state = _uiState.value
-        when {
-            isFocused -> _uiState.update { it.copy(focusedFields = it.focusedFields + field) }
-            // Leaving a field reveals its validation error.
-            field in state.focusedFields -> setForm(
-                state.copy(focusedFields = state.focusedFields - field, validatedFields = state.validatedFields + field),
-            )
-        }
-    }
-
-    private fun submit() {
-        val state = _uiState.value
-        if (!state.isSubmitEnabled) return
-        _uiState.update { it.copy(isSaving = true, error = null) }
+    private fun save(state: IncidentFormUiState) {
         viewModelScope.launch {
             runSuspendCatching { saveIncident(state.incidentId, state.toDraft(), state.deletedPhotoIds) }
-                .onSuccess { _uiState.update { it.copy(isSaving = false, isSaved = true) } }
-                .onFailure { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.toIncidentFailure()) }
-                }
+                .onSuccess { onResult(IncidentFormResult.Saved) }
+                .onFailure { onResult(IncidentFormResult.SaveFailed(it.toIncidentFailure())) }
         }
     }
 
-    private inline fun edit(transform: IncidentFormUiState.() -> IncidentFormUiState) {
-        val state = _uiState.value
-        if (state.canEdit) setForm(state.transform())
-    }
+    private fun onResult(result: IncidentFormResult) = setState(reducer.reduce(_uiState.value, result))
 
-    /** Publishes [state] after validating it, and saves it so that it survives process death. */
-    private fun setForm(state: IncidentFormUiState) {
-        _uiState.value = state.validated()
-        savedStateHandle[SAVED_FORM_KEY] = Json.encodeToString(SavedForm.from(state))
+    /** Publishes [state], and saves the user's edits so that they survive process death. */
+    private fun setState(state: IncidentFormUiState) {
+        val form = SavedForm.from(state)
+        if (form != SavedForm.from(_uiState.value)) savedStateHandle[SAVED_FORM_KEY] = Json.encodeToString(form)
+        _uiState.value = state
     }
-
-    private fun IncidentFormUiState.validated() = copy(missingFields = validateIncidentDraft(toDraft()))
 
     private fun restoreForm(): IncidentFormUiState? = savedStateHandle.get<String>(SAVED_FORM_KEY)
         ?.let { runCatching { Json.decodeFromString<SavedForm>(it) }.getOrNull() }
@@ -112,18 +77,6 @@ class IncidentFormViewModel @Inject constructor(
         internal const val SAVED_FORM_KEY = "incident_form"
     }
 }
-
-private fun IncidentFormUiState.photosVisited() =
-    copy(validatedFields = validatedFields + RequiredIncidentField.PHOTOS)
-
-private fun IncidentFormUiState.filledWith(incident: Incident) = copy(
-    isLoading = false,
-    title = incident.title,
-    location = incident.location,
-    description = incident.description,
-    photos = incident.photos,
-    originalPhotoIds = incident.photos.filterIsInstance<IncidentPhoto.Stored>().map(IncidentPhoto.Stored::id),
-)
 
 /** The user's edits, kept in [SavedStateHandle] as JSON. */
 @Serializable
