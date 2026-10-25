@@ -10,6 +10,10 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.photo.CapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormReducer
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormResult
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiEvent
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

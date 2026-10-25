@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.form
+package com.hyejeanmoon.fieldincidentreporter.feature.form.state
 
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 /**
  * Computes each form state from the previous one. It only marks loading or saving as started;
- * [IncidentFormViewModel] does that work and reports back with an [IncidentFormResult].
+ * the view model does that work and reports back with an [IncidentFormResult].
  */
 class IncidentFormReducer @Inject constructor() {
     fun reduce(state: IncidentFormUiState, event: IncidentFormUiEvent): IncidentFormUiState = when (state) {

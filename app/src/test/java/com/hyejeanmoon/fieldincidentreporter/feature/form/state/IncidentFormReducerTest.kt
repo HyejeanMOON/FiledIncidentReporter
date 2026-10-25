@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.form
+package com.hyejeanmoon.fieldincidentreporter.feature.form.state
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto

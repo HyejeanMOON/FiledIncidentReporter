@@ -58,6 +58,8 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_DESCRIPTI
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_LOCATION_LENGTH
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_TITLE_LENGTH
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiEvent
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiState
 import com.hyejeanmoon.fieldincidentreporter.ui.component.BackTopAppBar
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentLoadFailureScreen

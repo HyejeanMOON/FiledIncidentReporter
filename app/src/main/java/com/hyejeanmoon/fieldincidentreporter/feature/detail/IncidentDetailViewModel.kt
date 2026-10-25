@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailReducer
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailResult
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailUiEvent
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

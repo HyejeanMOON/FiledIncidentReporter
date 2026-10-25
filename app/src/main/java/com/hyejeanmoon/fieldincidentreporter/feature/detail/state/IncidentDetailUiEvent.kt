@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.detail
+package com.hyejeanmoon.fieldincidentreporter.feature.detail.state
 
 sealed interface IncidentDetailUiEvent {
     data object Retry : IncidentDetailUiEvent

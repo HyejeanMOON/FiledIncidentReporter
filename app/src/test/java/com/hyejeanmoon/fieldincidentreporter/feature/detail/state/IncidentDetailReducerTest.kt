@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.detail
+package com.hyejeanmoon.fieldincidentreporter.feature.detail.state
 
 import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.testing.testIncident

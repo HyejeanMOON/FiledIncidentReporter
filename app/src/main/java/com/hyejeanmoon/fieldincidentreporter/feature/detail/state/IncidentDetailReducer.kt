@@ -1,10 +1,10 @@
-package com.hyejeanmoon.fieldincidentreporter.feature.detail
+package com.hyejeanmoon.fieldincidentreporter.feature.detail.state
 
 import javax.inject.Inject
 
 /**
  * Computes each detail state from the previous one. It only marks loading or deleting as started;
- * [IncidentDetailViewModel] does that work and reports back with an [IncidentDetailResult].
+ * the view model does that work and reports back with an [IncidentDetailResult].
  */
 class IncidentDetailReducer @Inject constructor() {
     fun reduce(state: IncidentDetailUiState, event: IncidentDetailUiEvent): IncidentDetailUiState = when (event) {

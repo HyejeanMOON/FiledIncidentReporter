@@ -10,6 +10,9 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormReducer
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiEvent
+import com.hyejeanmoon.fieldincidentreporter.feature.form.state.IncidentFormUiState
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeCapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.testing.FakeIncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.testing.MainDispatcherRule

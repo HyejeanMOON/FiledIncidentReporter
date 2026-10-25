@@ -29,6 +29,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hyejeanmoon.fieldincidentreporter.R
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailUiEvent
+import com.hyejeanmoon.fieldincidentreporter.feature.detail.state.IncidentDetailUiState
 import com.hyejeanmoon.fieldincidentreporter.ui.component.BackTopAppBar
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentErrorDialog
 import com.hyejeanmoon.fieldincidentreporter.ui.component.IncidentLoadFailureScreen
