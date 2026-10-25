@@ -12,7 +12,6 @@
     <string name="description_label">Description</string>
     <string name="created_at_label">Created</string>
     <string name="updated_at_label">Updated</string>
-    <string name="resolved_at_label">Resolved</string>
     <string name="status_open">Open</string>
     <string name="status_resolved">Resolved</string>
     <string name="photos_label">Photos</string>

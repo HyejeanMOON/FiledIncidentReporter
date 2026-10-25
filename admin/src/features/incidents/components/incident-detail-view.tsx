@@ -25,7 +25,6 @@ export function IncidentDetailView({ incident }: { incident: Incident }) {
   const timeline = [
     { label: "Reported", value: incident.createdAt },
     { label: "Last updated", value: incident.updatedAt },
-    ...(incident.resolvedAt ? [{ label: "Resolved", value: incident.resolvedAt }] : []),
   ];
 
   return (

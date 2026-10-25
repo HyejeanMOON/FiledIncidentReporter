@@ -232,8 +232,7 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
                 maxLines = 3,
             )
             TimestampText(R.string.created_at_label, incident.createdAt)
-            if (incident.hasSeparateUpdateTime) TimestampText(R.string.updated_at_label, incident.updatedAt)
-            incident.resolvedAt?.let { TimestampText(R.string.resolved_at_label, it) }
+            if (incident.isUpdated) TimestampText(R.string.updated_at_label, incident.updatedAt)
             if (incident.photos.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     itemsIndexed(incident.photos) { index, photo ->

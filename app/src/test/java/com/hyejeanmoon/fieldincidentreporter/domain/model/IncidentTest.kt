@@ -10,18 +10,13 @@ class IncidentTest {
     private val later = testTime.plusSeconds(60)
 
     @Test
-    fun `a new report has no separate update time`() {
-        assertEquals(false, created.hasSeparateUpdateTime)
+    fun `a new report is not updated`() {
+        assertEquals(false, created.isUpdated)
     }
 
     @Test
-    fun `an edit has its own update time`() {
-        assertEquals(true, created.copy(updatedAt = later).hasSeparateUpdateTime)
-        assertEquals(true, created.copy(updatedAt = later.plusSeconds(60), resolvedAt = later).hasSeparateUpdateTime)
-    }
-
-    @Test
-    fun `resolving a report does not count as an update`() {
-        assertEquals(false, created.copy(updatedAt = later, resolvedAt = later).hasSeparateUpdateTime)
+    fun `an edit or a resolution updates the report`() {
+        assertEquals(true, created.copy(updatedAt = later).isUpdated)
+        assertEquals(true, created.copy(updatedAt = later, resolvedAt = later).isUpdated)
     }
 }

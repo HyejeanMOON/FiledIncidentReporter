@@ -14,10 +14,10 @@ data class Incident(
     val resolvedAt: Instant? = null,
 ) {
     /**
-     * Whether [updatedAt] records a change of its own. The server also sets it when the report is
-     * created and when it is resolved, and [createdAt] and [resolvedAt] already show those times.
+     * Whether the report changed after it was created, by an edit or a change of status. The server
+     * sets [updatedAt] to [createdAt] when the report is created.
      */
-    val hasSeparateUpdateTime: Boolean get() = updatedAt != createdAt && updatedAt != resolvedAt
+    val isUpdated: Boolean get() = updatedAt != createdAt
 
     val isResolved: Boolean get() = resolvedAt != null
 }
