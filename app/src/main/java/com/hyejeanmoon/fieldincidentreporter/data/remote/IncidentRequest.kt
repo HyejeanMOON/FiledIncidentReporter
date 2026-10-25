@@ -32,12 +32,22 @@ internal fun HttpException.toIncidentFailure(): IncidentFailure {
     return failureForApiError(code, code())
 }
 
+/** The Problem Details `code` values the server sends. */
+private object ApiErrorCode {
+    const val INCIDENT_NOT_FOUND = "INCIDENT_NOT_FOUND"
+    const val RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
+    const val INVALID_INCIDENT = "INVALID_INCIDENT"
+    const val INVALID_REQUEST = "INVALID_REQUEST"
+    const val PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
+    const val INTERNAL_ERROR = "INTERNAL_ERROR"
+}
+
 internal fun failureForApiError(code: String?, status: Int): IncidentFailure = when (code) {
-    "INCIDENT_NOT_FOUND", "RESOURCE_NOT_FOUND" -> IncidentFailure.INCIDENT_NOT_FOUND
-    "INVALID_INCIDENT" -> IncidentFailure.INCIDENT_VALIDATION_FAILED
-    "INVALID_REQUEST" -> IncidentFailure.MALFORMED_REQUEST
-    "PAYLOAD_TOO_LARGE" -> IncidentFailure.UPLOAD_TOO_LARGE
-    "INTERNAL_ERROR" -> IncidentFailure.SERVER_ERROR
+    ApiErrorCode.INCIDENT_NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND -> IncidentFailure.INCIDENT_NOT_FOUND
+    ApiErrorCode.INVALID_INCIDENT -> IncidentFailure.INCIDENT_VALIDATION_FAILED
+    ApiErrorCode.INVALID_REQUEST -> IncidentFailure.MALFORMED_REQUEST
+    ApiErrorCode.PAYLOAD_TOO_LARGE -> IncidentFailure.UPLOAD_TOO_LARGE
+    ApiErrorCode.INTERNAL_ERROR -> IncidentFailure.SERVER_ERROR
     else -> when (status) {
         400, 405, 415, 422 -> IncidentFailure.MALFORMED_REQUEST
         404 -> IncidentFailure.INCIDENT_NOT_FOUND
