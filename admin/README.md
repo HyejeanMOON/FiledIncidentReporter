@@ -10,7 +10,7 @@ A Next.js 16 dashboard for operators to triage, edit, and resolve incidents from
 
 Or run `./start.sh` from the repository root to start both.
 
-Check the project with `npm run lint` and `npm run build`.
+Check the project with `npm test`, `npm run lint`, and `npm run build`. Unit tests (Vitest) sit next to the code they cover as `*.test.ts`.
 
 ## Features
 
