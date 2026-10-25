@@ -1,6 +1,5 @@
-package com.example.incidentreporter
+package com.example.incidentreporter.incident.api
 
-import com.example.incidentreporter.incident.api.IncidentExceptionHandler
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

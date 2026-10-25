@@ -1,7 +1,6 @@
 package com.example.incidentreporter.incident.api
 
 import com.example.incidentreporter.incident.application.IncidentService
-import com.example.incidentreporter.incident.application.PhotoPreviewEncoder
 import org.springframework.core.io.InputStreamResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType

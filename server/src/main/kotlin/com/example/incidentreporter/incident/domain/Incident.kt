@@ -38,7 +38,3 @@ data class IncidentInput(
         if (it.isEmpty() || it.length > max) throw InvalidIncidentException("$field must contain 1 to $max characters")
     }
 }
-
-class InvalidIncidentException(message: String) : RuntimeException(message)
-class IncidentNotFoundException : RuntimeException("Incident not found")
-class PhotoNotFoundException : RuntimeException("Photo not found")

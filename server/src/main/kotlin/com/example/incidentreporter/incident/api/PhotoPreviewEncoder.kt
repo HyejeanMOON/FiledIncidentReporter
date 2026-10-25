@@ -1,4 +1,4 @@
-package com.example.incidentreporter.incident.application
+package com.example.incidentreporter.incident.api
 
 import com.example.incidentreporter.incident.domain.StoredPhoto
 import org.springframework.stereotype.Component

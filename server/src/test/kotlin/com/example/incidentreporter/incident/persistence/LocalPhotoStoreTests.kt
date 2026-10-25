@@ -1,9 +1,7 @@
-package com.example.incidentreporter
+package com.example.incidentreporter.incident.persistence
 
 import com.example.incidentreporter.incident.domain.IncomingPhoto
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
-import com.example.incidentreporter.incident.persistence.LocalPhotoStore
-import com.example.incidentreporter.incident.persistence.PhotoStorageProperties
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

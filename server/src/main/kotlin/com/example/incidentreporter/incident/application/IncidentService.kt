@@ -64,8 +64,8 @@ class IncidentService(
         return incident
     }
 
-    @Transactional(readOnly = true)
     /** A numbered [page] or a position to continue [after]; neither starts at the top. */
+    @Transactional(readOnly = true)
     fun list(page: Int?, after: IncidentPosition?, size: Int, query: String?, resolved: Boolean?): IncidentPage {
         if (page != null && after != null) {
             throw InvalidIncidentException("page and cursor cannot be combined")
