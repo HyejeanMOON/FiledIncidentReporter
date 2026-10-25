@@ -23,6 +23,7 @@ Arguments to `start.sh` are passed to Spring Boot, for example `./start.sh --ser
 | Method | Route | Purpose |
 | --- | --- | --- |
 | GET | `/incidents` | List incidents, newest first |
+| GET | `/incidents/summary` | Open, resolved, and total counts over all incidents |
 | GET | `/incidents/{id}` | Get one incident |
 | POST | `/incidents` | Create an incident with photos |
 | PATCH | `/incidents/{id}` | Update text, remove photos, add photos |
@@ -30,6 +31,8 @@ Arguments to `start.sh` are passed to Spring Boot, for example `./start.sh --ser
 | DELETE | `/incidents/{id}` | Delete an incident and its photo files |
 | GET | `/incidents/{id}/photos/{photoId}` | Original photo |
 | GET | `/incidents/{id}/photos/{photoId}/thumbnail` | Preview, at most 512 px (JPEG when decodable) |
+
+Photo responses are immutable and carry `Cache-Control: private, max-age=31536000, immutable`.
 
 ### Incident
 
@@ -70,6 +73,7 @@ Unchanged photos are not uploaded again. `PATCH /incidents/{id}/resolution` take
 | `page` | Numbered page from 0 (used by the dashboard) |
 | `cursor` | The previous response's `nextCursor` (used by the app); stable when incidents are added or deleted |
 | `q` | Case-insensitive search in title, location, and description |
+| `field` | `title`, `location`, or `description` to search only that field; `all` (default) searches every field |
 | `resolved` | `true` or `false` to filter by status |
 
 Pass either `page` or `cursor`, not both.

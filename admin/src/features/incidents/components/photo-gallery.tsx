@@ -47,7 +47,7 @@ export function PhotoGallery({ photos }: { photos: IncidentPhoto[] }) {
       <div className="photo-grid">
         {photos.map((photo, index) => (
           <button type="button" key={photo.id} onClick={() => setOpenIndex(index)} aria-label={`Enlarge photo ${index + 1}`}>
-            <Image src={photoPath(photo.url)} alt={`Site photo ${index + 1}`} fill sizes="(max-width: 650px) 100vw, 450px" unoptimized />
+            <Image src={photoPath(photo.thumbnailUrl)} alt={`Site photo ${index + 1}`} fill sizes="(max-width: 650px) 100vw, 450px" unoptimized />
           </button>
         ))}
       </div>

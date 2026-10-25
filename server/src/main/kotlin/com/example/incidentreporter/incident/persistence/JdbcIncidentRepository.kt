@@ -5,6 +5,8 @@ import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
 import com.example.incidentreporter.incident.domain.IncidentPosition
 import com.example.incidentreporter.incident.domain.IncidentRepository
+import com.example.incidentreporter.incident.domain.IncidentSearchField
+import com.example.incidentreporter.incident.domain.IncidentSummary
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
@@ -60,7 +62,14 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
             .update()
     }
 
-    override fun findPage(after: IncidentPosition?, offset: Long, size: Int, query: String?, resolved: Boolean?): IncidentPage {
+    override fun findPage(
+        after: IncidentPosition?,
+        offset: Long,
+        size: Int,
+        query: String?,
+        field: IncidentSearchField?,
+        resolved: Boolean?,
+    ): IncidentPage {
         val filters = mutableListOf<String>()
         val params = mutableMapOf<String, Any>("limit" to size + 1, "offset" to offset)
         if (after != null) {
@@ -74,7 +83,8 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
                 .replace("!", "!!")
                 .replace("%", "!%")
                 .replace("_", "!_")
-            filters += "(LOWER(title) LIKE :pattern ESCAPE '!' OR LOWER(location) LIKE :pattern ESCAPE '!' OR LOWER(description) LIKE :pattern ESCAPE '!')"
+            val columns = field?.let { listOf(SEARCH_COLUMNS.getValue(it)) } ?: SEARCH_COLUMNS.values
+            filters += columns.joinToString(" OR ", "(", ")") { "LOWER($it) LIKE :pattern ESCAPE '!'" }
             params["pattern"] = "%$escaped%"
         }
         if (resolved != null) {
@@ -92,6 +102,11 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
         val next = pageRows.last().takeIf { rows.size > size }?.let { IncidentPosition(it.createdAt, it.id) }
         return IncidentPage(pageRows.map { it.copy(photos = photos[it.id].orEmpty()) }, next)
     }
+
+    override fun summarize(): IncidentSummary =
+        jdbc.sql("SELECT COUNT(*) - COUNT(resolved_at) AS open, COUNT(resolved_at) AS resolved FROM incidents")
+            .query { rs, _ -> IncidentSummary(rs.getInt("open"), rs.getInt("resolved")) }
+            .single()
 
     override fun insert(incident: Incident) {
         jdbc.sql("INSERT INTO incidents (id, title, location, description, created_at, updated_at) VALUES (:id, :title, :location, :description, :createdAt, :updatedAt)")
@@ -144,5 +159,11 @@ class JdbcIncidentRepository(private val jdbc: JdbcClient) : IncidentRepository 
     private companion object {
         const val SELECT_INCIDENTS =
             "SELECT id, title, location, description, created_at, updated_at, resolved_at FROM incidents"
+
+        val SEARCH_COLUMNS = mapOf(
+            IncidentSearchField.TITLE to "title",
+            IncidentSearchField.LOCATION to "location",
+            IncidentSearchField.DESCRIPTION to "description",
+        )
     }
 }

@@ -14,6 +14,7 @@ Check the project with `npm run lint` and `npm run build`.
 
 ## Features
 
+- **Overview:** total, open, and resolved counts over all incidents.
 - **List:** pagination, search (all fields or only title, location, or description), and open/resolved filter. The state is kept in the URL, for example `?status=open&field=title&q=pump&page=1`.
 - **Detail:** opens in a side drawer over the list; the same URL opened directly shows a full page. Includes a photo viewer and a Resolve / Reopen button.
 - **Create, edit, delete:** same rules as the Android app — required title, location, and description, and 1–20 photos (JPEG, PNG, WebP, HEIC/HEIF, or GIF, up to 10 MB each). Delete asks for confirmation.
@@ -24,8 +25,8 @@ Check the project with `npm run lint` and `npm run build`.
 | Path | Contents |
 | --- | --- |
 | `src/app` | Routes: dashboard, detail drawer (`@modal`), standalone detail page, photo proxy |
-| `src/features/incidents` | Queries, Server Functions (`actions.ts`), form validation, URL parsing, components |
+| `src/features/incidents` | Queries, Server Functions (`actions.ts`), user-facing messages and error mapping, form validation, URL parsing, components |
 | `src/components` | App shell and shared UI |
-| `src/lib/backend.ts` | Server-only API client |
+| `src/lib/backend.ts` | Server-only API client: timeouts, error codes, photo proxy |
 
 All API calls run on the Next.js server, so the browser never talks to the API directly and no CORS setup is needed.

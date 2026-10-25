@@ -5,6 +5,8 @@ import com.example.incidentreporter.incident.domain.IncidentInput
 import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
 import com.example.incidentreporter.incident.domain.IncidentPosition
+import com.example.incidentreporter.incident.domain.IncidentSearchField
+import com.example.incidentreporter.incident.domain.IncidentSummary
 import com.example.incidentreporter.incident.domain.IncomingPhoto
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
 import org.springframework.web.multipart.MultipartFile
@@ -61,6 +63,8 @@ data class IncidentPageResponse(
     val nextCursor: String?,
 )
 
+data class IncidentSummaryResponse(val total: Int, val open: Int, val resolved: Int)
+
 fun MultipartFile.toIncomingPhoto() = IncomingPhoto(contentType, size, this::getInputStream)
 
 private fun IncidentPhoto.toResponse(incidentId: String): PhotoResponse {
@@ -73,6 +77,8 @@ fun Incident.toResponse() = IncidentResponse(
     resolvedAt != null, resolvedAt,
 )
 
+fun IncidentSummary.toResponse() = IncidentSummaryResponse(total, open, resolved)
+
 fun IncidentPage.toResponse(page: Int?, size: Int) =
     IncidentPageResponse(items.map(Incident::toResponse), page, size, next != null, next?.toCursor())
 
@@ -84,3 +90,9 @@ fun String.toIncidentPosition(): IncidentPosition = runCatching {
     val (createdAt, id) = String(Base64.getUrlDecoder().decode(this)).split('|', limit = 2)
     IncidentPosition(Instant.parse(createdAt), id)
 }.getOrElse { throw InvalidIncidentException("cursor must be a nextCursor returned by this API") }
+
+/** `all` searches every text field; any other value names the one field to search. */
+fun String.toSearchField(): IncidentSearchField? =
+    if (this == "all") null
+    else IncidentSearchField.entries.firstOrNull { it.name.lowercase() == this }
+        ?: throw InvalidIncidentException("field must be all, title, location, or description")

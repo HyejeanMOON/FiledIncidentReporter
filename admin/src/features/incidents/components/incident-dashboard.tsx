@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { LoadingPanel } from "@/components/ui/state-panel";
-import { getIncidentPage } from "../queries";
+import { getIncidentPage, getIncidentSummary } from "../queries";
 import type { IncidentQuery } from "../search-params";
 import { IncidentResults } from "./incident-results";
 import { IncidentToolbar } from "./incident-toolbar";
@@ -18,11 +18,12 @@ function RecordsSection({ children }: { children: ReactNode }) {
 }
 
 export function IncidentDashboard({ query }: { query: IncidentQuery }) {
-  // One request feeds both the overview counts and the list.
+  // Start both requests before either boundary suspends, so they run in parallel.
+  const summary = getIncidentSummary();
   const result = getIncidentPage(query);
   return (
     <>
-      <Suspense fallback={<OverviewCards />}><IncidentOverview result={result} /></Suspense>
+      <Suspense fallback={<OverviewCards />}><IncidentOverview result={summary} /></Suspense>
       <RecordsSection>
         <IncidentToolbar query={query} />
         <Suspense fallback={listLoading}><IncidentResults result={result} query={query} /></Suspense>

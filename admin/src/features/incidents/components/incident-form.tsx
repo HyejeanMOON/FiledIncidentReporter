@@ -5,8 +5,11 @@ import Image from "next/image";
 import { Icon } from "@/components/ui/icon";
 import { createIncident, updateIncident } from "../actions";
 import { photoPath } from "../format";
+import { messages } from "../messages";
 import type { Incident } from "../types";
-import { fieldLimits, missingFields, photoTypes, type IncidentFields, type RequiredField, type TextField } from "../validation";
+import {
+  fieldLimits, MAX_PHOTO_BYTES, missingFields, photoTypes, type IncidentFields, type RequiredField, type TextField,
+} from "../validation";
 
 /** A photo already on the server (`storedId`) or a file picked in this form. */
 type FormPhoto = { key: string; src: string; storedId?: string; file?: File };
@@ -38,6 +41,8 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
   // Only fields the user has visited show a "required" error.
   const [visited, setVisited] = useState<ReadonlySet<RequiredField>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  // Set when the last pick skipped files the backend would reject for their size.
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [isSaving, startTransition] = useTransition();
   const pickerRef = useRef<HTMLInputElement>(null);
   const previewUrls = useRef(new Set<string>());
@@ -64,8 +69,11 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
+    const picked = [...files];
+    const accepted = picked.filter((file) => file.size <= MAX_PHOTO_BYTES);
+    setPhotoError(accepted.length < picked.length ? messages.photoTooLarge : null);
     const known = new Set(photos.map((photo) => photo.key));
-    const added = [...files].filter((file) => !known.has(fileKey(file))).map((file) => {
+    const added = accepted.filter((file) => !known.has(fileKey(file))).map((file) => {
       const src = URL.createObjectURL(file);
       previewUrls.current.add(src);
       return { key: fileKey(file), src, file };
@@ -137,6 +145,7 @@ export function IncidentForm({ incident, heading, onCancel, onSaved, onSavingCha
           <h4 id="incident-photos-label">Photos</h4>
           <p className="form-help">Add pictures that help identify the issue.</p>
           {showError("photos") && <p className="field-error" role="alert">Select 1 to 20 photos.</p>}
+          {photoError && <p className="field-error" role="alert">{photoError}</p>}
           <div className="photo-field-buttons">
             <button type="button" className="outline-button" onClick={() => pickerRef.current?.click()} onBlur={() => visit("photos")}><Icon name="image" size={16} />Choose photos</button>
             {photoInput}

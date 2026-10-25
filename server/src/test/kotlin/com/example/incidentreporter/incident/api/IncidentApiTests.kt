@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import com.jayway.jsonpath.JsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -245,12 +246,48 @@ class IncidentApiTests @Autowired constructor(
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.hasNext").value(false))
+        mvc.perform(get("/incidents?q=zxq-413&field=location"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].location").value("ZXQ-413 location"))
+        mvc.perform(get("/incidents?q=zxq-413&field=all"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items.length()").value(3))
+        mvc.perform(get("/incidents?q=zxq-413&field=photos"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
         mvc.perform(get("/incidents").param("q", "% marker"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.items.length()").value(1))
         mvc.perform(get("/incidents?q=${"x".repeat(201)}"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("INVALID_INCIDENT"))
+    }
+
+    @Test
+    fun `summary counts every incident by status`() {
+        // Tests that commit may leave incidents behind, so compare against the counts before.
+        val before = summary()
+        val id = JsonPath.read<String>(create("Summarized").andReturn().response.contentAsString, "$.id")
+        create("Still open")
+        resolution(id, true).andExpect(status().isOk)
+
+        val after = summary()
+        assertEquals(listOf(2, 1, 1), listOf("total", "open", "resolved").map { after.getValue(it) - before.getValue(it) })
+    }
+
+    @Test
+    fun `photos may be cached by the browser but errors may not`() {
+        val photoUrl = JsonPath.read<String>(create("Cached").andReturn().response.contentAsString, "$.photos[0].url")
+
+        listOf(photoUrl, "$photoUrl/thumbnail").forEach { url ->
+            mvc.perform(get(url))
+                .andExpect(status().isOk)
+                .andExpect(header().string("Cache-Control", "max-age=31536000, private, immutable"))
+        }
+        mvc.perform(get("${photoUrl.substringBeforeLast('/')}/missing"))
+            .andExpect(status().isNotFound)
+            .andExpect(header().doesNotExist("Cache-Control"))
     }
 
     @Test
@@ -382,6 +419,9 @@ class IncidentApiTests @Autowired constructor(
         }
         return mvc.perform(request)
     }
+
+    private fun summary(): Map<String, Int> =
+        JsonPath.read(mvc.perform(get("/incidents/summary")).andExpect(status().isOk).andReturn().response.contentAsString, "$")
 
     private fun nextCursor(page: String) = JsonPath.read<String>(page, "$.nextCursor")
 

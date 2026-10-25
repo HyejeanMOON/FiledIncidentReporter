@@ -7,6 +7,8 @@ import com.example.incidentreporter.incident.domain.IncidentPage
 import com.example.incidentreporter.incident.domain.IncidentPhoto
 import com.example.incidentreporter.incident.domain.IncidentPosition
 import com.example.incidentreporter.incident.domain.IncidentRepository
+import com.example.incidentreporter.incident.domain.IncidentSearchField
+import com.example.incidentreporter.incident.domain.IncidentSummary
 import com.example.incidentreporter.incident.domain.IncomingPhoto
 import com.example.incidentreporter.incident.domain.InvalidIncidentException
 import com.example.incidentreporter.incident.domain.PhotoNotFoundException
@@ -66,7 +68,14 @@ class IncidentService(
 
     /** A numbered [page] or a position to continue [after]; neither starts at the top. */
     @Transactional(readOnly = true)
-    fun list(page: Int?, after: IncidentPosition?, size: Int, query: String?, resolved: Boolean?): IncidentPage {
+    fun list(
+        page: Int?,
+        after: IncidentPosition?,
+        size: Int,
+        query: String?,
+        field: IncidentSearchField?,
+        resolved: Boolean?,
+    ): IncidentPage {
         if (page != null && after != null) {
             throw InvalidIncidentException("page and cursor cannot be combined")
         }
@@ -77,8 +86,11 @@ class IncidentService(
         if (normalizedQuery != null && normalizedQuery.length > MAX_QUERY_LENGTH) {
             throw InvalidIncidentException("q must contain at most $MAX_QUERY_LENGTH characters")
         }
-        return repository.findPage(after, (page ?: 0).toLong() * size, size, normalizedQuery, resolved)
+        return repository.findPage(after, (page ?: 0).toLong() * size, size, normalizedQuery, field, resolved)
     }
+
+    @Transactional(readOnly = true)
+    fun summarize(): IncidentSummary = repository.summarize()
 
     @Transactional
     fun setResolved(id: String, resolved: Boolean): Incident {

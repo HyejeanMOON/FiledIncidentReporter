@@ -25,12 +25,17 @@ class IncidentController(private val service: IncidentService) {
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) field: String?,
         @RequestParam(required = false) resolved: Boolean?,
     ): IncidentPageResponse {
         val after = cursor?.toIncidentPosition()
         // The admin pages by number, and the app continues from a cursor so that changes do not shift its pages.
-        return service.list(page, after, size, q, resolved).toResponse(page = if (after == null) page ?: 0 else null, size)
+        return service.list(page, after, size, q, field?.toSearchField(), resolved)
+            .toResponse(page = if (after == null) page ?: 0 else null, size)
     }
+
+    @GetMapping("/summary")
+    fun summary(): IncidentSummaryResponse = service.summarize().toResponse()
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): IncidentResponse = service.get(id).toResponse()

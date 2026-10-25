@@ -1,11 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { errorMessage, requestJson } from "@/lib/backend";
-import { fieldLimits, MAX_PHOTOS, photoTypes, type IncidentFields } from "./validation";
-
-const invalidIncident = "The report does not meet the server requirements. Check its fields and photos, then try again.";
-const unreadablePhoto = "Could not read a selected photo. Select it again and retry.";
+import { requestJson } from "@/lib/backend";
+import { errorMessage } from "./errors";
+import { messages } from "./messages";
+import { fieldLimits, MAX_PHOTO_BYTES, MAX_PHOTOS, photoTypes, type IncidentFields } from "./validation";
 
 const incidentPath = (id: string) => `/incidents/${encodeURIComponent(id)}`;
 
@@ -24,12 +23,13 @@ function readIncidentForm(formData: FormData): { fields: IncidentFields; photos:
   for (const [field, max] of Object.entries(fieldLimits) as [keyof IncidentFields, number][]) {
     const value = formData.get(field);
     const trimmed = typeof value === "string" ? value.trim() : "";
-    if (!trimmed || trimmed.length > max) return invalidIncident;
+    if (!trimmed || trimmed.length > max) return messages.invalidIncident;
     fields[field] = trimmed;
   }
   const photos = formData.getAll("photos").filter((value): value is File => value instanceof File);
-  if (photos.length > MAX_PHOTOS) return invalidIncident;
-  if (photos.some((photo) => !photoTypes.includes(photo.type))) return unreadablePhoto;
+  if (photos.length > MAX_PHOTOS) return messages.invalidIncident;
+  if (photos.some((photo) => !photoTypes.includes(photo.type))) return messages.unreadablePhoto;
+  if (photos.some((photo) => photo.size > MAX_PHOTO_BYTES)) return messages.photoTooLarge;
   return { fields, photos };
 }
 
@@ -44,36 +44,37 @@ function multipart(incident: object, photos: File[]) {
 export async function createIncident(formData: FormData): Promise<string | null> {
   const input = readIncidentForm(formData);
   if (typeof input === "string") return input;
-  if (!input.photos.length) return invalidIncident;
-  const error = await send("/incidents", { method: "POST", body: multipart(input.fields, input.photos) }, "Something went wrong. Please try again.");
+  if (!input.photos.length) return messages.invalidIncident;
+  const error = await send("/incidents", { method: "POST", body: multipart(input.fields, input.photos) }, messages.saveFailed);
   if (!error) refresh();
   return error;
 }
 
 export async function updateIncident(id: string, formData: FormData): Promise<string | null> {
-  if (typeof id !== "string") return invalidIncident;
+  if (typeof id !== "string") return messages.invalidRequest;
   const input = readIncidentForm(formData);
   if (typeof input === "string") return input;
   const deletePhotoIds = formData.getAll("deletePhotoIds").filter((value) => typeof value === "string");
   const body = multipart({ ...input.fields, deletePhotoIds }, input.photos);
-  const error = await send(incidentPath(id), { method: "PATCH", body }, "Something went wrong. Please try again.");
+  const error = await send(incidentPath(id), { method: "PATCH", body }, messages.saveFailed);
   if (!error) refresh();
   return error;
 }
 
 /** The caller leaves the detail view and refreshes the list after a successful delete. */
 export async function deleteIncident(id: string): Promise<string | null> {
-  if (typeof id !== "string") return invalidIncident;
-  return send(incidentPath(id), { method: "DELETE" }, "Something went wrong. Please try again.");
+  if (typeof id !== "string") return messages.invalidRequest;
+  return send(incidentPath(id), { method: "DELETE" }, messages.saveFailed);
 }
 
 export async function setIncidentResolution(id: string, resolved: boolean): Promise<string | null> {
-  if (typeof id !== "string" || typeof resolved !== "boolean") return "resolved must be a boolean.";
+  // Server Functions are public endpoints, so check the argument types a forged request could change.
+  if (typeof id !== "string" || typeof resolved !== "boolean") return messages.invalidRequest;
   const error = await send(`${incidentPath(id)}/resolution`, {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ resolved }),
-  }, "Update failed. Please try again.");
+  }, messages.updateFailed);
   // Re-render the open detail and the list behind it with the new status.
   if (!error) refresh();
   return error;

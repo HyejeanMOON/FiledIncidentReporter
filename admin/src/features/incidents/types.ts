@@ -23,4 +23,11 @@ export type IncidentPage = {
   hasNext: boolean;
 };
 
+/** Counts over every incident, regardless of the list filters. */
+export type IncidentSummary = {
+  total: number;
+  open: number;
+  resolved: number;
+};
+
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };

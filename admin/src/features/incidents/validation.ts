@@ -1,5 +1,6 @@
 /** Report rules shared by the form and the Server Functions; they mirror the backend and the Android client. */
 export const MAX_PHOTOS = 20;
+export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 export const fieldLimits = { title: 200, location: 200, description: 4000 } as const;
 
