@@ -2,6 +2,17 @@
 
 An Android app for reporting facility maintenance incidents with photos, backed by a local Spring Boot API and a Next.js admin dashboard.
 
+## Screenshots
+
+| Android app | Admin dashboard |
+| --- | --- |
+| <img src="screenshots/Screenshot_20261025_143654.png" alt="Incident list in the Android app" width="260"> | <img src="screenshots/screenshot2026-10-25%2013.59.26.png" alt="Incident overview in the admin dashboard" width="520"> |
+
+Screen recordings (click to play on GitHub, or open them from [`screenshots/`](screenshots/)):
+
+- [Android app](screenshots/Screen_recording_20261025_142528.webm) (1:36): form validation, adding photos from the gallery and camera, and submitting a report.
+- [Admin dashboard](screenshots/screen_recroding%202026-10-25%20at%2014.36.43.mp4) (0:43): editing an incident, marking it resolved, filtering and searching the list, and form validation for a new report.
+
 ## Quick start
 
 **Requirements:** JDK 17+, Node.js 20.9+, Android Studio with an emulator (API 26+). The Maven and Gradle wrappers are included.
