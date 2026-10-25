@@ -26,15 +26,15 @@ class IncidentDetailViewModel @Inject constructor(
         load()
     }
 
-    fun onAction(action: IncidentDetailAction) {
+    fun onEvent(event: IncidentDetailUiEvent) {
         val previous = _uiState.value
-        val state = reducer.reduce(previous, action)
+        val state = reducer.reduce(previous, event)
         _uiState.value = state
         // The reducer only marks the work as started, and leaves the state alone when it should not start.
-        if (state != previous) when (action) {
-            IncidentDetailAction.Retry, IncidentDetailAction.Reload -> load()
-            IncidentDetailAction.Delete -> delete()
-            IncidentDetailAction.ErrorDismissed -> Unit
+        if (state != previous) when (event) {
+            IncidentDetailUiEvent.Retry, IncidentDetailUiEvent.Reload -> load()
+            IncidentDetailUiEvent.Delete -> delete()
+            IncidentDetailUiEvent.ErrorDismissed -> Unit
         }
     }
 

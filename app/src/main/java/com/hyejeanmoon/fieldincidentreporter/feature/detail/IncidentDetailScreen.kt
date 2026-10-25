@@ -50,7 +50,7 @@ internal fun IncidentDetailScreen(
 ) {
     LaunchedEffect(reloadRequested) {
         if (reloadRequested) {
-            viewModel.onAction(IncidentDetailAction.Reload)
+            viewModel.onEvent(IncidentDetailUiEvent.Reload)
             onReloadRequestHandled()
         }
     }
@@ -60,7 +60,7 @@ internal fun IncidentDetailScreen(
             title = stringResource(R.string.incident_details_title),
             failure = uiState.failure,
             onBack = onBack,
-            onRetry = { viewModel.onAction(IncidentDetailAction.Retry) },
+            onRetry = { viewModel.onEvent(IncidentDetailUiEvent.Retry) },
         )
         is IncidentDetailUiState.Loaded -> {
             BackHandler(enabled = uiState.isDeleting) { }
@@ -71,12 +71,12 @@ internal fun IncidentDetailScreen(
                 isDeleting = uiState.isDeleting,
                 onBack = onBack,
                 onEdit = { onEdit(uiState.incident.id) },
-                onDelete = { viewModel.onAction(IncidentDetailAction.Delete) },
+                onDelete = { viewModel.onEvent(IncidentDetailUiEvent.Delete) },
             )
             uiState.error?.let { error ->
                 IncidentErrorDialog(
                     failure = error,
-                    onDismiss = { viewModel.onAction(IncidentDetailAction.ErrorDismissed) },
+                    onDismiss = { viewModel.onEvent(IncidentDetailUiEvent.ErrorDismissed) },
                 )
             }
         }

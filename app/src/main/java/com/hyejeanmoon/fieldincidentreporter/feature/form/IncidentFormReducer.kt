@@ -1,6 +1,5 @@
 package com.hyejeanmoon.fieldincidentreporter.feature.form
 
-import com.hyejeanmoon.fieldincidentreporter.domain.error.IncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.Incident
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_DESCRIPTION_LENGTH
@@ -8,14 +7,6 @@ import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_LOCATION_
 import com.hyejeanmoon.fieldincidentreporter.domain.model.MAX_INCIDENT_TITLE_LENGTH
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
 import javax.inject.Inject
-
-/** The outcome of loading or saving, fed back into [IncidentFormReducer]. */
-sealed interface IncidentFormResult {
-    data class Loaded(val incident: Incident) : IncidentFormResult
-    data class LoadFailed(val failure: IncidentFailure) : IncidentFormResult
-    data object Saved : IncidentFormResult
-    data class SaveFailed(val failure: IncidentFailure) : IncidentFormResult
-}
 
 /**
  * Computes each form state from the previous one. It only marks loading or saving as started;

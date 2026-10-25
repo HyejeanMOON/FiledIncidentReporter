@@ -20,10 +20,3 @@ sealed interface IncidentDetailUiState {
         val error: IncidentFailure? = null,
     ) : IncidentDetailUiState
 }
-
-sealed interface IncidentDetailAction {
-    data object Retry : IncidentDetailAction
-    data object Reload : IncidentDetailAction
-    data object Delete : IncidentDetailAction
-    data object ErrorDismissed : IncidentDetailAction
-}
