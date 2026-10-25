@@ -1,6 +1,6 @@
 package com.hyejeanmoon.fieldincidentreporter.testing
 
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.CapturedPhotoStore
+import com.hyejeanmoon.fieldincidentreporter.domain.photo.CapturedPhotoStore
 
 class FakeCapturedPhotoStore : CapturedPhotoStore {
     val photos = mutableListOf<String>()

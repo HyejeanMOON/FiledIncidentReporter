@@ -7,7 +7,7 @@ import com.hyejeanmoon.fieldincidentreporter.domain.error.runSuspendCatching
 import com.hyejeanmoon.fieldincidentreporter.domain.error.toIncidentFailure
 import com.hyejeanmoon.fieldincidentreporter.domain.model.IncidentPhoto
 import com.hyejeanmoon.fieldincidentreporter.domain.model.RequiredIncidentField
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.CapturedPhotoStore
+import com.hyejeanmoon.fieldincidentreporter.domain.photo.CapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import com.hyejeanmoon.fieldincidentreporter.domain.usecase.SaveIncidentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel

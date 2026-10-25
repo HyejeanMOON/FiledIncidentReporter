@@ -2,7 +2,7 @@ package com.hyejeanmoon.fieldincidentreporter.data.di
 
 import com.hyejeanmoon.fieldincidentreporter.data.local.CapturedPhotoFiles
 import com.hyejeanmoon.fieldincidentreporter.data.repository.OfflineFirstIncidentRepository
-import com.hyejeanmoon.fieldincidentreporter.domain.repository.CapturedPhotoStore
+import com.hyejeanmoon.fieldincidentreporter.domain.photo.CapturedPhotoStore
 import com.hyejeanmoon.fieldincidentreporter.domain.repository.IncidentRepository
 import dagger.Binds
 import dagger.Module

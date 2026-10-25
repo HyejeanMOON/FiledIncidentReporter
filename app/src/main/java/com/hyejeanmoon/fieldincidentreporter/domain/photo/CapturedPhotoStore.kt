@@ -1,4 +1,4 @@
-package com.hyejeanmoon.fieldincidentreporter.domain.repository
+package com.hyejeanmoon.fieldincidentreporter.domain.photo
 
 /** Files the camera writes photos into before they are uploaded. */
 interface CapturedPhotoStore {
