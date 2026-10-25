@@ -254,10 +254,11 @@ private fun IncidentCard(incident: Incident, onClick: () -> Unit) {
 
 @Composable
 private fun TimestampText(@StringRes labelRes: Int, time: Instant) {
-    Text(
-        text = stringResource(labelRes) + ": " + formatIncidentTime(time),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    LabeledText(
+        label = stringResource(labelRes),
+        value = formatIncidentTime(time),
+        labelStyle = MaterialTheme.typography.labelMedium,
+        valueStyle = MaterialTheme.typography.bodyMedium,
     )
 }
 
